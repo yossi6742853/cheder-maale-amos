@@ -96,6 +96,8 @@ async function viewStudent(id) {
       ${eventsHtml}
     </div>
     <div class="modal-footer">
+      <button class="btn btn-outline-info" onclick="emailParentSummary(${id})"><i class="bi bi-envelope"></i> שלח להורים</button>
+      <button class="btn btn-outline-success" onclick="printStudentReport(${id})"><i class="bi bi-printer"></i> הדפס</button>
       <button class="btn btn-outline-primary" onclick="bootstrap.Modal.getInstance(document.getElementById('viewStuModal')).hide(); editStudent(${id})"><i class="bi bi-pencil"></i> ערוך</button>
       <button class="btn btn-secondary" data-bs-dismiss="modal">סגור</button>
     </div>
@@ -130,6 +132,75 @@ async function deleteStudent(id) {
   await api('deleteStudent', [id]);
   renderStudents();
   loadStats();
+}
+
+async function emailParentSummary(id) {
+  const s = _students.find(x => String(x['מזהה']) === String(id));
+  if (!s) return;
+  const events = ((await api('listBehavior', [])).data || [])
+    .filter(e => String(e['תלמיד_מזהה']) === String(id))
+    .sort((a,b) => new Date(b['תאריך']) - new Date(a['תאריך']));
+  const fullName = (s['שם פרטי']||'') + ' ' + (s['שם משפחה']||'');
+  const motherEmail = prompt('מייל ההורה:', s['טלפון אם'] || '');
+  if (!motherEmail) return;
+  const subject = `סיכום התנהגות — ${fullName}`;
+  const lines = [`שלום,`, ``, `הנה סיכום עדכני של ${fullName}:`, ``];
+  lines.push(`גיל: ${s['גיל']||'-'} | מחזור: ${s['מחזור']||'-'}`);
+  lines.push(`סך כל אירועים: ${events.length} | חומרה גבוהה: ${events.filter(e=>e['חומרה']==='גבוהה').length}`);
+  lines.push(``);
+  if (events.length) {
+    lines.push('אירועים אחרונים:');
+    events.slice(0, 10).forEach(e => {
+      const dt = new Date(e['תאריך']).toLocaleDateString('he-IL');
+      lines.push(`- ${dt} | ${e['קטגוריה']||''} (${e['חומרה']||'-'}): ${e['תיאור']||''}`);
+    });
+  }
+  lines.push(``, 'בברכה,', 'בית התלמוד · בית שמש');
+  const body = lines.join('\n');
+  const mailto = `mailto:${motherEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = mailto;
+}
+
+function printStudentReport(id) {
+  const s = _students.find(x => String(x['מזהה']) === String(id));
+  if (!s) return;
+  // Open print view
+  const w = window.open('', '_blank');
+  Promise.resolve(api('listBehavior', [])).then(b => {
+    const events = (b.data || []).filter(e => String(e['תלמיד_מזהה']) === String(id))
+      .sort((a,b) => new Date(b['תאריך']) - new Date(a['תאריך']));
+    const fullName = (s['שם פרטי']||'') + ' ' + (s['שם משפחה']||'');
+    const today = new Date().toLocaleDateString('he-IL');
+    const html = `<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="utf-8"><title>${fullName}</title>
+<style>
+@page{size:A4;margin:1.5cm}body{font-family:Arial,sans-serif;direction:rtl;color:#1f2937}
+h1{color:#0066cc;border-bottom:3px solid #0066cc;padding-bottom:8pt}
+table{width:100%;border-collapse:collapse;margin:10pt 0;font-size:10pt}
+th{background:#f3f4f6;padding:6pt;border:1px solid #d1d5db;text-align:right}
+td{padding:5pt;border:1px solid #e5e7eb}
+.event{margin:6pt 0;padding:8pt;border-right:4px solid #0066cc;background:#f9fafb}
+.event.high{border-color:#dc2626;background:#fef2f2}.event.mid{border-color:#f59e0b;background:#fffbeb}.event.low{border-color:#16a34a;background:#f0fdf4}
+@media print{.no-print{display:none}}
+</style></head><body>
+<button class="no-print" onclick="window.print()" style="background:#0066cc;color:#fff;border:none;padding:10pt 20pt;border-radius:6px;cursor:pointer">🖨 הדפס</button>
+<h1>${fullName}</h1>
+<p>בית התלמוד · בית שמש · ${today}</p>
+<table>
+<tr><th>גיל</th><td>${s['גיל']||'-'}</td><th>מחזור</th><td>${s['מחזור']||'-'}</td></tr>
+<tr><th>שם אם</th><td>${s['שם אם']||'-'}</td><th>טלפון אם</th><td>${s['טלפון אם']||'-'}</td></tr>
+<tr><th>שם אב</th><td>${s['שם אב']||'-'}</td><th>טלפון אב</th><td>${s['טלפון אב']||'-'}</td></tr>
+<tr><th>כתובת</th><td colspan="3">${s['כתובת']||'-'}</td></tr>
+</table>
+<h2>היסטוריית התנהגות (${events.length})</h2>
+${events.map(e => {
+  const c = e['חומרה']==='גבוהה'?'high':e['חומרה']==='נמוכה'?'low':'mid';
+  return `<div class="event ${c}"><strong>${e['קטגוריה']||''}</strong> · ${new Date(e['תאריך']).toLocaleString('he-IL')} · חומרה ${e['חומרה']||''}<br>${e['תיאור']||''}</div>`;
+}).join('')}
+<script>setTimeout(()=>window.print(), 500);</script>
+</body></html>`;
+    w.document.write(html);
+    w.document.close();
+  });
 }
 
 function addStudentModal() {
