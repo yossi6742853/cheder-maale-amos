@@ -6,7 +6,11 @@ async function renderStudents() {
     <div class="mb-3"><button class="btn btn-link p-0" onclick="goto('home')"><i class="bi bi-arrow-right"></i> חזרה לתפריט</button></div>
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h3><i class="bi bi-people"></i> רשימת תלמידים</h3>
-      <button class="btn btn-primary" onclick="addStudentModal()"><i class="bi bi-plus"></i> תלמיד חדש</button>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="addStudentModal()"><i class="bi bi-plus"></i> תלמיד חדש</button>
+        <button class="btn btn-outline-success" onclick="importStudentsCSV()"><i class="bi bi-upload"></i> ייבוא CSV</button>
+        <button class="btn btn-outline-info" onclick="exportStudentsCSV()"><i class="bi bi-download"></i> ייצוא CSV</button>
+      </div>
     </div>
     <div class="card p-3">
       <input id="s-search" class="form-control mb-3" placeholder="חיפוש תלמיד...">
@@ -159,6 +163,72 @@ async function emailParentSummary(id) {
   const body = lines.join('\n');
   const mailto = `mailto:${motherEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   window.location.href = mailto;
+}
+
+function exportStudentsCSV() {
+  let csv = '﻿';  // BOM
+  csv += 'מזהה,שם פרטי,שם משפחה,גיל,מחזור,שם אם,טלפון אם,שם אב,טלפון אב,כתובת,הערות\n';
+  _students.forEach(s => {
+    const fields = ['מזהה','שם פרטי','שם משפחה','גיל','מחזור','שם אם','טלפון אם','שם אב','טלפון אב','כתובת','הערות'];
+    csv += fields.map(f => `"${(s[f]||'').toString().replace(/"/g,'""')}"`).join(',') + '\n';
+  });
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `תלמידים_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+function importStudentsCSV() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.csv,.txt';
+  input.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    const lines = text.replace(/^﻿/,'').split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) return alert('הקובץ ריק או לא תקין');
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
+    let added = 0;
+    let maxId = _students.reduce((m,s) => Math.max(m, parseInt(s['מזהה'])||0), 0);
+    for (let i = 1; i < lines.length; i++) {
+      const values = parseCSVLine(lines[i]);
+      const obj = {};
+      headers.forEach((h,j) => obj[h] = values[j] || '');
+      if (!obj['שם פרטי'] && !obj['שם משפחה']) continue;
+      if (!obj['מזהה']) {
+        maxId += 1;
+        obj['מזהה'] = maxId;
+      }
+      const r = await api('addStudent', [obj]);
+      if (r.ok) added++;
+    }
+    alert(`יובאו ${added} תלמידים`);
+    renderStudents();
+    loadStats();
+  };
+  input.click();
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQuotes && line[i+1] === '"') { cur += '"'; i++; }
+      else inQuotes = !inQuotes;
+    } else if (c === ',' && !inQuotes) {
+      result.push(cur);
+      cur = '';
+    } else {
+      cur += c;
+    }
+  }
+  result.push(cur);
+  return result;
 }
 
 function printStudentReport(id) {
