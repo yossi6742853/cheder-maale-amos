@@ -40,9 +40,14 @@ async function loadData() {
   _data = {
     students: stored.students || (studentsJ && studentsJ.students) || [],
     behavior: stored.behavior || (behaviorJ && behaviorJ.events) || [],
-    users: (usersJ && usersJ.users) || [{username:'admin',password_hash:'6742',role:'מנהל'}],
+    users: stored.users || (usersJ && usersJ.users) || [{username:'admin',password_hash:'6742',role:'מנהל',permissions:'all'}],
     categories: (categoriesJ && categoriesJ.categories) || [],
   };
+  // Always make sure admin exists
+  if (!_data.users.find(u => u.username === 'admin')) {
+    _data.users.unshift({username:'admin',password_hash:'6742',role:'מנהל',permissions:'all'});
+    saveStored(_data);
+  }
   return _data;
 }
 
@@ -94,15 +99,22 @@ async function api(fn, args) {
     }
     case 'addUser': {
       const obj = args[0];
-      _data.users.push({
+      const newUser = {
         username: obj['שם משתמש'],
         password_hash: obj['סיסמה'],
         role: obj['תפקיד'],
         permissions: obj['הרשאות'],
-      });
+      };
+      // Check for duplicate
+      const idx = _data.users.findIndex(u => u.username === newUser.username);
+      if (idx >= 0) {
+        _data.users[idx] = newUser;  // overwrite
+      } else {
+        _data.users.push(newUser);
+      }
       saveStored(_data);
       syncRowToSheet('משתמשים', obj).then(updateSyncIndicator);
-      return { ok: true };
+      return { ok: true, data: { rowCount: _data.users.length } };
     }
     case 'exportPDF':
       // generate PDF in browser using jsPDF or similar
