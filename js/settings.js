@@ -127,35 +127,197 @@ async function saveUser() {
 }
 
 async function renderReports() {
+  const data = getData();
+  const cycles = [...new Set(data.students.map(s => s['מחזור']).filter(Boolean))];
+  const cats = data.categories.map(c => c.name);
+  const sevs = ['גבוהה','בינונית','נמוכה'];
+
   document.getElementById('page-reports').innerHTML = `
     <div class="mb-3"><button class="btn btn-link p-0" onclick="goto('home')"><i class="bi bi-arrow-right"></i> חזרה לתפריט</button></div>
-    <h3 class="mb-3"><i class="bi bi-file-earmark-pdf"></i> דוחות וייצוא</h3>
-    <div class="row g-3">
-      <div class="col-md-4"><div class="card p-4 text-center card-tile" onclick="generateReport('students')">
-        <i class="bi bi-people fs-1 text-primary"></i>
-        <h5 class="mt-2">רשימת תלמידים</h5>
-        <p class="text-muted small mb-0">פירוט מלא של תלמידים עם כל הפרטים</p>
-      </div></div>
-      <div class="col-md-4"><div class="card p-4 text-center card-tile" onclick="generateReport('behavior')">
-        <i class="bi bi-clipboard fs-1 text-success"></i>
-        <h5 class="mt-2">מעקב התנהגות</h5>
-        <p class="text-muted small mb-0">כל אירועי ההתנהגות לפי תאריך</p>
-      </div></div>
-      <div class="col-md-4"><div class="card p-4 text-center card-tile" onclick="generateReport('all')">
-        <i class="bi bi-file fs-1 text-info"></i>
-        <h5 class="mt-2">דוח מלא</h5>
-        <p class="text-muted small mb-0">תלמידים + התנהגות + סטטיסטיקה</p>
-      </div></div>
+    <h3 class="mb-3"><i class="bi bi-file-earmark-bar-graph"></i> דוחות וסינון</h3>
+
+    <div class="card p-3 mb-3">
+      <h6><i class="bi bi-funnel"></i> סינון</h6>
+      <div class="row g-2">
+        <div class="col-md-3">
+          <label class="form-label small">תלמיד</label>
+          <select id="r-student" class="form-select form-select-sm">
+            <option value="">כל התלמידים</option>
+            ${data.students.map(s => `<option value="${s['מזהה']}">${s['שם פרטי']||''} ${s['שם משפחה']||''}</option>`).join('')}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small">מחזור</label>
+          <select id="r-cycle" class="form-select form-select-sm">
+            <option value="">כל המחזורים</option>
+            ${cycles.map(c => `<option value="${c}">${c}</option>`).join('')}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small">קטגוריית התנהגות</label>
+          <select id="r-cat" class="form-select form-select-sm">
+            <option value="">כל הקטגוריות</option>
+            ${cats.map(c => `<option value="${c}">${c}</option>`).join('')}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small">חומרה</label>
+          <select id="r-sev" class="form-select form-select-sm">
+            <option value="">כל החומרות</option>
+            ${sevs.map(s => `<option value="${s}">${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small">מתאריך</label>
+          <input id="r-from" type="date" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small">עד תאריך</label>
+          <input id="r-to" type="date" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-6 d-flex align-items-end gap-2">
+          <button class="btn btn-primary btn-sm" onclick="applyReportFilters()"><i class="bi bi-search"></i> הצג דוח</button>
+          <button class="btn btn-outline-secondary btn-sm" onclick="resetReportFilters()"><i class="bi bi-arrow-counterclockwise"></i> איפוס</button>
+          <button class="btn btn-outline-success btn-sm" onclick="exportFilteredCSV()"><i class="bi bi-file-earmark-spreadsheet"></i> CSV</button>
+          <button class="btn btn-outline-danger btn-sm" onclick="printFiltered()"><i class="bi bi-printer"></i> הדפס</button>
+        </div>
+      </div>
     </div>
-    <div class="card p-3 mt-4">
-      <h5><i class="bi bi-info-circle"></i> איך זה עובד</h5>
-      <ul class="mb-0 small text-muted">
-        <li>לחץ על אחד הסוגים למעלה</li>
-        <li>הדוח ייפתח בחלון חדש בעיצוב מודפס</li>
-        <li>לחץ Ctrl+P או על "הדפס" לשמירה כ-PDF</li>
-        <li>בחר "Save as PDF" כיעד הדפסה</li>
-      </ul>
+
+    <div id="report-results"></div>`;
+
+  applyReportFilters();
+}
+
+let _filteredStudents = [], _filteredEvents = [];
+
+function applyReportFilters() {
+  const data = getData();
+  const sId = document.getElementById('r-student').value;
+  const cycle = document.getElementById('r-cycle').value;
+  const cat = document.getElementById('r-cat').value;
+  const sev = document.getElementById('r-sev').value;
+  const from = document.getElementById('r-from').value;
+  const to = document.getElementById('r-to').value;
+
+  _filteredStudents = data.students.filter(s => {
+    if (sId && String(s['מזהה']) !== sId) return false;
+    if (cycle && s['מחזור'] !== cycle) return false;
+    return true;
+  });
+
+  _filteredEvents = data.behavior.filter(e => {
+    if (sId && String(e['תלמיד_מזהה']) !== sId) return false;
+    if (cat && e['קטגוריה'] !== cat) return false;
+    if (sev && e['חומרה'] !== sev) return false;
+    const dt = new Date(e['תאריך']);
+    if (from && dt < new Date(from)) return false;
+    if (to && dt > new Date(to+'T23:59:59')) return false;
+    if (cycle) {
+      const stu = data.students.find(s => String(s['מזהה']) === String(e['תלמיד_מזהה']));
+      if (!stu || stu['מחזור'] !== cycle) return false;
+    }
+    return true;
+  });
+
+  drawReportResults();
+}
+
+function drawReportResults() {
+  const totalEvents = _filteredEvents.length;
+  const high = _filteredEvents.filter(e => e['חומרה']==='גבוהה').length;
+  const mid = _filteredEvents.filter(e => e['חומרה']==='בינונית').length;
+  const low = _filteredEvents.filter(e => e['חומרה']==='נמוכה').length;
+
+  let html = `
+    <div class="row g-2 mb-3">
+      <div class="col-md-3"><div class="card p-3 text-center"><div class="display-6 text-primary">${_filteredStudents.length}</div><div class="text-muted small">תלמידים</div></div></div>
+      <div class="col-md-3"><div class="card p-3 text-center"><div class="display-6 text-info">${totalEvents}</div><div class="text-muted small">אירועים</div></div></div>
+      <div class="col-md-2"><div class="card p-3 text-center"><div class="display-6 text-danger">${high}</div><div class="text-muted small">גבוהה</div></div></div>
+      <div class="col-md-2"><div class="card p-3 text-center"><div class="display-6 text-warning">${mid}</div><div class="text-muted small">בינונית</div></div></div>
+      <div class="col-md-2"><div class="card p-3 text-center"><div class="display-6 text-success">${low}</div><div class="text-muted small">נמוכה</div></div></div>
     </div>`;
+
+  if (_filteredStudents.length) {
+    html += '<div class="card p-3 mb-3"><h6><i class="bi bi-people"></i> תלמידים</h6><table class="table table-sm"><thead><tr><th>שם</th><th>מחזור</th><th>טלפון אם</th><th>אירועים</th></tr></thead><tbody>';
+    _filteredStudents.forEach(s => {
+      const cnt = _filteredEvents.filter(e => String(e['תלמיד_מזהה']) === String(s['מזהה'])).length;
+      html += `<tr><td><strong>${s['שם פרטי']||''} ${s['שם משפחה']||''}</strong></td><td>${s['מחזור']||''}</td><td>${s['טלפון אם']||''}</td><td><span class="badge bg-secondary">${cnt}</span></td></tr>`;
+    });
+    html += '</tbody></table></div>';
+  }
+
+  if (_filteredEvents.length) {
+    html += '<div class="card p-3"><h6><i class="bi bi-clipboard-check"></i> אירועי התנהגות</h6>';
+    const sorted = [..._filteredEvents].sort((a,b) => new Date(b['תאריך']) - new Date(a['תאריך']));
+    sorted.forEach(e => {
+      const sev = e['חומרה']==='גבוהה' ? 'severity-high' : e['חומרה']==='נמוכה' ? 'severity-low' : 'severity-mid';
+      const dt = e['תאריך'] ? new Date(e['תאריך']).toLocaleString('he-IL') : '';
+      html += `<div class="card p-2 mb-2 ${sev}">
+        <div class="d-flex justify-content-between"><div><span class="cat-badge">${e['קטגוריה']||''}</span><strong class="mx-2">${e['שם תלמיד']||''}</strong></div><small class="text-muted">${dt}</small></div>
+        <p class="mb-0 mt-2">${e['תיאור']||''}</p>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  if (!_filteredStudents.length && !_filteredEvents.length) {
+    html += '<div class="card p-5 text-center text-muted"><i class="bi bi-inbox fs-1"></i><p class="mt-2">אין נתונים בפילטר הנוכחי</p></div>';
+  }
+
+  document.getElementById('report-results').innerHTML = html;
+}
+
+function resetReportFilters() {
+  ['r-student','r-cycle','r-cat','r-sev','r-from','r-to'].forEach(id => document.getElementById(id).value = '');
+  applyReportFilters();
+}
+
+function exportFilteredCSV() {
+  let csv = '﻿';  // BOM for Excel Hebrew
+  csv += 'תלמידים\n';
+  csv += 'מזהה,שם,גיל,מחזור,טלפון אם,טלפון אב\n';
+  _filteredStudents.forEach(s => {
+    csv += `${s['מזהה']||''},"${s['שם פרטי']||''} ${s['שם משפחה']||''}",${s['גיל']||''},${s['מחזור']||''},${s['טלפון אם']||''},${s['טלפון אב']||''}\n`;
+  });
+  csv += '\nאירועי התנהגות\n';
+  csv += 'תאריך,תלמיד,קטגוריה,חומרה,תיאור\n';
+  _filteredEvents.forEach(e => {
+    const dt = e['תאריך'] ? new Date(e['תאריך']).toLocaleString('he-IL') : '';
+    csv += `${dt},"${e['שם תלמיד']||''}","${e['קטגוריה']||''}",${e['חומרה']||''},"${(e['תיאור']||'').replace(/"/g,'""')}"\n`;
+  });
+  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cheder_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+function printFiltered() {
+  const today = new Date().toLocaleDateString('he-IL');
+  const html = `<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="utf-8"><title>דוח חדר</title>
+<style>
+@page{size:A4;margin:1.5cm}
+body{font-family:Arial,'Heebo',sans-serif;direction:rtl;color:#1f2937}
+h1{color:#0066cc;border-bottom:3px solid #0066cc;padding-bottom:10px}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:10pt}
+th{background:#f3f4f6;padding:8px;border:1px solid #d1d5db;text-align:right}
+td{padding:6px 8px;border:1px solid #e5e7eb}
+.event{margin-bottom:8px;padding:8px;border-right:4px solid #0066cc;background:#f9fafb}
+.event.high{border-color:#dc2626}.event.mid{border-color:#f59e0b}.event.low{border-color:#16a34a}
+@media print{.print-btn{display:none}}
+</style></head><body>
+<button class="print-btn" onclick="window.print()" style="background:#0066cc;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;margin-bottom:20px">🖨 הדפס</button>
+<h1>דוח חדר מעלה עמוס - ${today}</h1>
+<p>תלמידים: ${_filteredStudents.length} · אירועים: ${_filteredEvents.length}</p>
+${_filteredStudents.length ? `<h2>תלמידים</h2><table><tr><th>שם</th><th>גיל</th><th>מחזור</th><th>טלפון</th></tr>${_filteredStudents.map(s=>`<tr><td>${s['שם פרטי']||''} ${s['שם משפחה']||''}</td><td>${s['גיל']||''}</td><td>${s['מחזור']||''}</td><td>${s['טלפון אם']||''}</td></tr>`).join('')}</table>` : ''}
+${_filteredEvents.length ? `<h2>אירועי התנהגות</h2>${_filteredEvents.map(e=>{const c=e['חומרה']==='גבוהה'?'high':e['חומרה']==='נמוכה'?'low':'mid';return `<div class="event ${c}"><strong>${e['שם תלמיד']||''}</strong> · ${e['קטגוריה']||''} · ${new Date(e['תאריך']).toLocaleString('he-IL')}<br>${e['תיאור']||''}</div>`}).join('')}` : ''}
+<script>setTimeout(()=>window.print(), 500);</script>
+</body></html>`;
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
 }
 
 function generateReport(type) {
