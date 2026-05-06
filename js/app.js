@@ -61,11 +61,57 @@ document.getElementById('password').addEventListener('keypress', e => { if(e.key
 async function loadStats() {
   const s = await api('listStudents', []);
   const b = await api('listBehavior', []);
+  const events = b.data || [];
   document.getElementById('stat-students').textContent = (s.data || []).length;
-  document.getElementById('stat-events').textContent = (b.data || []).length;
+  document.getElementById('stat-events').textContent = events.length;
   const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
-  const week = (b.data || []).filter(e => new Date(e['תאריך']).getTime() > weekAgo);
+  const week = events.filter(e => new Date(e['תאריך']).getTime() > weekAgo);
   document.getElementById('stat-week').textContent = week.length;
+  document.getElementById('stat-high').textContent = events.filter(e => e['חומרה'] === 'גבוהה').length;
+  drawTrendChart(events);
+  drawRecentActivity(events);
+}
+
+function drawTrendChart(events) {
+  const el = document.getElementById('trend-chart');
+  if (!el || typeof Chart === 'undefined') return;
+  // Last 14 days
+  const labels = [];
+  const counts = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 3600 * 1000);
+    const key = d.toLocaleDateString('he-IL', {day:'numeric',month:'numeric'});
+    labels.push(key);
+    const dayCount = events.filter(e => {
+      const ed = new Date(e['תאריך']);
+      return ed.toDateString() === d.toDateString();
+    }).length;
+    counts.push(dayCount);
+  }
+  if (window._chart) window._chart.destroy();
+  window._chart = new Chart(el, {
+    type: 'line',
+    data: { labels, datasets: [{ label: 'אירועים', data: counts, borderColor: '#0066cc', backgroundColor: 'rgba(0,102,204,0.1)', tension: 0.3, fill: true }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+  });
+}
+
+function drawRecentActivity(events) {
+  const el = document.getElementById('recent-activity');
+  if (!el) return;
+  const sorted = [...events].sort((a,b) => new Date(b['תאריך']) - new Date(a['תאריך'])).slice(0, 5);
+  if (!sorted.length) {
+    el.innerHTML = '<p class="text-muted small mb-0">אין פעילות אחרונה</p>';
+    return;
+  }
+  el.innerHTML = sorted.map(e => {
+    const sev = e['חומרה'] === 'גבוהה' ? 'text-danger' : e['חומרה'] === 'נמוכה' ? 'text-success' : 'text-warning';
+    const date = e['תאריך'] ? new Date(e['תאריך']).toLocaleDateString('he-IL') : '';
+    return `<div class="d-flex justify-content-between border-bottom py-2 small">
+      <div><i class="bi bi-circle-fill ${sev}" style="font-size:.6rem"></i> <strong>${e['שם תלמיד']||''}</strong> · ${e['קטגוריה']||''}</div>
+      <div class="text-muted">${date}</div>
+    </div>`;
+  }).join('');
 }
 
 // Auto-login from session
