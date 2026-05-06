@@ -1,5 +1,6 @@
 async function renderSettings() {
   document.getElementById('page-settings').innerHTML = `
+    <div class="mb-3"><button class="btn btn-link p-0" onclick="goto('home')"><i class="bi bi-arrow-right"></i> חזרה לתפריט</button></div>
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h3><i class="bi bi-gear"></i> הגדרות והרשאות</h3>
       <button class="btn btn-primary" onclick="addUserModal()"><i class="bi bi-plus"></i> משתמש חדש</button>
@@ -65,6 +66,7 @@ async function saveUser() {
 
 async function renderReports() {
   document.getElementById('page-reports').innerHTML = `
+    <div class="mb-3"><button class="btn btn-link p-0" onclick="goto('home')"><i class="bi bi-arrow-right"></i> חזרה לתפריט</button></div>
     <h3 class="mb-3"><i class="bi bi-file-earmark-pdf"></i> דוחות</h3>
     <div class="row g-3">
       <div class="col-md-4"><div class="card p-3 text-center">

@@ -3,6 +3,7 @@ let _students = [];
 
 async function renderStudents() {
   const html = `
+    <div class="mb-3"><button class="btn btn-link p-0" onclick="goto('home')"><i class="bi bi-arrow-right"></i> חזרה לתפריט</button></div>
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h3><i class="bi bi-people"></i> רשימת תלמידים</h3>
       <button class="btn btn-primary" onclick="addStudentModal()"><i class="bi bi-plus"></i> תלמיד חדש</button>
