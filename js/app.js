@@ -1,5 +1,26 @@
 // Main app router & login
 
+function toast(msg, type) {
+  let container = document.querySelector('.toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+  const icons = {success:'bi-check-circle-fill', error:'bi-exclamation-triangle-fill', warn:'bi-exclamation-circle-fill'};
+  const colors = {success:'#16a34a', error:'#dc2626', warn:'#f59e0b'};
+  const icon = icons[type] || 'bi-info-circle-fill';
+  const div = document.createElement('div');
+  div.className = `toast-msg ${type||''}`;
+  div.innerHTML = `<i class="bi ${icon}" style="color:${colors[type]||'#0066cc'};font-size:1.3rem"></i><span>${msg}</span>`;
+  container.appendChild(div);
+  setTimeout(() => {
+    div.classList.add('fadeOut');
+    setTimeout(() => div.remove(), 300);
+  }, 3000);
+}
+window.notify = toast;
+
 let currentUser = null;
 const PAGES = ['login','home','students','behavior','settings','reports'];
 
