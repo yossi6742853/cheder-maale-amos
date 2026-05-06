@@ -1,14 +1,50 @@
-body{font-family:'Heebo',sans-serif;background:#f8f9fa}
-.card{border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.05);border:none}
-.card-tile{padding:1.5rem;text-align:center;cursor:pointer;transition:transform .2s,box-shadow .2s}
-.card-tile:hover{transform:translateY(-3px);box-shadow:0 4px 16px rgba(0,0,0,0.1)}
-.btn-primary{background:#0066cc;border-color:#0066cc}
-.navbar{background:linear-gradient(135deg,#0066cc,#0052a3);color:#fff}
-.avatar{width:40px;height:40px;border-radius:50%;background:#e7f1ff;color:#0066cc;display:inline-flex;align-items:center;justify-content:center;font-weight:bold;margin-left:8px}
-.cat-badge{display:inline-block;padding:3px 10px;border-radius:12px;font-size:.85rem;background:#e7f1ff;color:#0066cc}
-.severity-high{border-right:4px solid #dc3545}
-.severity-mid{border-right:4px solid #ffc107}
-.severity-low{border-right:4px solid #28a745}
-.role-admin{background:#fff4e0;color:#925400}
-.role-rabbi{background:#e7f1ff;color:#0066cc}
-.role-readonly{background:#f0f0f0;color:#555}
+:root{
+  --primary:#0066cc;
+  --primary-dark:#004c99;
+  --success:#16a34a;
+  --warning:#f59e0b;
+  --danger:#dc2626;
+  --bg:#f6f7fb;
+  --surface:#ffffff;
+  --text:#1f2937;
+  --muted:#6b7280;
+}
+*{box-sizing:border-box}
+body{font-family:'Heebo',sans-serif;background:var(--bg);color:var(--text);direction:rtl}
+.navbar{background:linear-gradient(135deg,#1e40af 0%,#0066cc 50%,#0891b2 100%)!important;color:#fff;padding:1rem 0;box-shadow:0 4px 16px rgba(0,102,204,0.18)}
+.navbar-brand{font-weight:700;font-size:1.4rem;color:#fff!important}
+.card{border-radius:14px;box-shadow:0 4px 24px rgba(0,0,0,0.04);border:none;background:var(--surface);transition:all .25s}
+.card:hover{box-shadow:0 8px 32px rgba(0,0,0,0.08);transform:translateY(-2px)}
+.card-tile{padding:2rem 1rem;text-align:center;cursor:pointer;background:linear-gradient(135deg,#fff 0%,#f8fafc 100%);border-top:4px solid transparent}
+.card-tile:hover{border-top-color:var(--primary)}
+.card-tile i{transition:transform .3s}
+.card-tile:hover i{transform:scale(1.1)}
+.btn-primary{background:var(--primary);border-color:var(--primary);font-weight:500}
+.btn-primary:hover{background:var(--primary-dark);border-color:var(--primary-dark)}
+.avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#dbeafe,#bfdbfe);color:#1e40af;display:inline-flex;align-items:center;justify-content:center;font-weight:bold;margin-left:8px;flex-shrink:0}
+.cat-badge{display:inline-block;padding:3px 12px;border-radius:14px;font-size:.85rem;background:#dbeafe;color:#1e40af;font-weight:500}
+.severity-high{border-right:4px solid var(--danger);background:linear-gradient(to left,#fef2f2 0%,#fff 30%)}
+.severity-mid{border-right:4px solid var(--warning);background:linear-gradient(to left,#fffbeb 0%,#fff 30%)}
+.severity-low{border-right:4px solid var(--success);background:linear-gradient(to left,#f0fdf4 0%,#fff 30%)}
+.role-admin{background:#fef3c7;color:#92400e;font-weight:500}
+.role-rabbi{background:#dbeafe;color:#1e40af;font-weight:500}
+.role-readonly{background:#f3f4f6;color:#4b5563;font-weight:500}
+.form-control,.form-select{border:1px solid #e5e7eb;padding:.6rem .9rem;border-radius:8px}
+.form-control:focus,.form-select:focus{box-shadow:0 0 0 3px rgba(0,102,204,0.1);border-color:var(--primary)}
+.table{font-size:.95rem}
+.table thead th{background:#f9fafb;font-weight:600;border-bottom:2px solid #e5e7eb;color:var(--muted);text-transform:none;font-size:.85rem;letter-spacing:.02em}
+.table tbody tr{transition:background .15s}
+.table tbody tr:hover{background:#f9fafb}
+.modal-content{border-radius:14px;border:none;box-shadow:0 20px 60px rgba(0,0,0,0.15)}
+.modal-header{background:linear-gradient(135deg,#f8fafc,#f1f5f9);border-bottom:1px solid #e5e7eb;border-radius:14px 14px 0 0}
+.display-6{font-weight:700;color:var(--primary)}
+.text-muted{color:var(--muted)!important}
+.alert-success{background:#dcfce7;color:#166534;border:1px solid #86efac}
+.alert-danger{background:#fef2f2;color:#991b1b;border:1px solid #fca5a5}
+.sync-indicator{position:fixed;bottom:20px;left:20px;padding:8px 16px;border-radius:20px;background:#fff;box-shadow:0 4px 16px rgba(0,0,0,0.1);font-size:.85rem;z-index:1000}
+.sync-online{color:var(--success)}
+.sync-offline{color:var(--warning)}
+@media (max-width: 768px) {
+  .navbar-brand{font-size:1.1rem}
+  .card-tile{padding:1.5rem 1rem}
+}
