@@ -72,10 +72,32 @@ async function api(fn, args) {
       if (!user) return { ok: true, data: { ok: false, error: 'משתמש או סיסמה שגויים' } };
       return { ok: true, data: { ok: true, user: { username: u, role: user.role } } };
     }
-    case 'listStudents':
-      return { ok: true, data: _data.students };
-    case 'listBehavior':
-      return { ok: true, data: _data.behavior };
+    case 'listStudents': {
+      const u = JSON.parse(sessionStorage.getItem('user') || '{}');
+      if (u.username === 'admin' || u.role === 'מנהל') return { ok: true, data: _data.students };
+      const full = _data.users.find(x => x.username === u.username);
+      if (!full || !full.visible_students || full.visible_students === 'all') return { ok: true, data: _data.students };
+      const allowed = full.visible_students.split(',').map(s => s.trim()).filter(Boolean);
+      return { ok: true, data: _data.students.filter(s => allowed.includes(String(s['מזהה']))) };
+    }
+    case 'listBehavior': {
+      const u = JSON.parse(sessionStorage.getItem('user') || '{}');
+      let events = _data.behavior;
+      if (u.username !== 'admin' && u.role !== 'מנהל') {
+        const full = _data.users.find(x => x.username === u.username);
+        if (full) {
+          if (full.visible_students && full.visible_students !== 'all') {
+            const allowed = full.visible_students.split(',').map(s => s.trim()).filter(Boolean);
+            events = events.filter(e => allowed.includes(String(e['תלמיד_מזהה'])));
+          }
+          if (full.visible_categories && full.visible_categories !== 'all') {
+            const allowedC = full.visible_categories.split(',').map(s => s.trim()).filter(Boolean);
+            events = events.filter(e => allowedC.includes(e['קטגוריה']));
+          }
+        }
+      }
+      return { ok: true, data: events };
+    }
     case 'listCategories':
       return { ok: true, data: _data.categories.map(c => ({ 'קטגוריה': c.name })) };
     case 'listUsers':
@@ -104,17 +126,33 @@ async function api(fn, args) {
         password_hash: obj['סיסמה'],
         role: obj['תפקיד'],
         permissions: obj['הרשאות'],
+        visible_students: obj['תלמידים_מורשים'] || 'all',
+        visible_categories: obj['קטגוריות_מורשות'] || 'all',
       };
-      // Check for duplicate
       const idx = _data.users.findIndex(u => u.username === newUser.username);
       if (idx >= 0) {
-        _data.users[idx] = newUser;  // overwrite
+        _data.users[idx] = newUser;
       } else {
         _data.users.push(newUser);
       }
       saveStored(_data);
       syncRowToSheet('משתמשים', obj).then(updateSyncIndicator);
       return { ok: true, data: { rowCount: _data.users.length } };
+    }
+    case 'currentUserVisibleStudents': {
+      // Returns student IDs current user can see (or null = all)
+      const u = JSON.parse(sessionStorage.getItem('user') || '{}');
+      if (u.username === 'admin' || u.role === 'מנהל') return { ok: true, data: null };
+      const fullUser = _data.users.find(x => x.username === u.username);
+      if (!fullUser || !fullUser.visible_students || fullUser.visible_students === 'all') return { ok: true, data: null };
+      return { ok: true, data: fullUser.visible_students.split(',').map(s => s.trim()).filter(Boolean) };
+    }
+    case 'currentUserVisibleCategories': {
+      const u = JSON.parse(sessionStorage.getItem('user') || '{}');
+      if (u.username === 'admin' || u.role === 'מנהל') return { ok: true, data: null };
+      const fullUser = _data.users.find(x => x.username === u.username);
+      if (!fullUser || !fullUser.visible_categories || fullUser.visible_categories === 'all') return { ok: true, data: null };
+      return { ok: true, data: fullUser.visible_categories.split(',').map(s => s.trim()).filter(Boolean) };
     }
     case 'exportPDF':
       // generate PDF in browser using jsPDF or similar

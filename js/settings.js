@@ -54,6 +54,7 @@ const ROLE_DEFAULTS = {
 };
 
 function addUserModal() {
+  const data = getData();
   const checkboxes = PERMISSION_AREAS.map(a => `
     <div class="form-check d-flex align-items-center p-3 mb-2 border rounded" style="cursor:pointer">
       <input class="form-check-input ms-3 perm-cb" type="checkbox" value="${a.key}" id="perm-${a.key}">
@@ -64,6 +65,18 @@ function addUserModal() {
       </label>
     </div>
   `).join('');
+
+  const studentOpts = data.students.map(s => `
+    <div class="form-check">
+      <input class="form-check-input student-cb" type="checkbox" value="${s['מזהה']}" id="stu-${s['מזהה']}">
+      <label class="form-check-label" for="stu-${s['מזהה']}">${s['שם פרטי']||''} ${s['שם משפחה']||''} <small class="text-muted">(${s['מחזור']||''})</small></label>
+    </div>`).join('');
+
+  const catOpts = data.categories.map(c => `
+    <div class="form-check">
+      <input class="form-check-input cat-cb" type="checkbox" value="${c.name}" id="cat-${c.name.replace(/\s/g,'_')}">
+      <label class="form-check-label" for="cat-${c.name.replace(/\s/g,'_')}">${c.name}</label>
+    </div>`).join('');
 
   const html = `<div class="modal fade" id="addUModal"><div class="modal-dialog modal-lg"><div class="modal-content">
     <div class="modal-header"><h5><i class="bi bi-person-plus"></i> משתמש חדש</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
@@ -82,11 +95,34 @@ function addUserModal() {
           <select id="nu-role" class="form-select form-select-lg">
             ${Object.keys(ROLE_DEFAULTS).map(r => `<option value="${r}">${r}</option>`).join('')}
           </select>
-          <div class="text-muted small mt-1">בחירת תפקיד מסמנת אוטומטית את ההרשאות המתאימות</div>
         </div>
         <div class="col-12">
           <h6 class="mt-2"><i class="bi bi-shield-check"></i> מסכים שיוכל לראות:</h6>
           ${checkboxes}
+        </div>
+        <div class="col-12">
+          <h6 class="mt-2"><i class="bi bi-people"></i> אילו תלמידים יוכל לראות?</h6>
+          <div class="border rounded p-2 mb-2">
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="all-students" checked>
+              <label class="form-check-label fw-bold" for="all-students">כל התלמידים</label>
+            </div>
+            <div id="student-list" class="d-none" style="max-height:200px;overflow-y:auto">
+              ${studentOpts || '<small class="text-muted">אין תלמידים</small>'}
+            </div>
+          </div>
+        </div>
+        <div class="col-12">
+          <h6 class="mt-2"><i class="bi bi-tag"></i> אילו קטגוריות התנהגות יוכל לראות?</h6>
+          <div class="border rounded p-2">
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="all-cats" checked>
+              <label class="form-check-label fw-bold" for="all-cats">כל הקטגוריות</label>
+            </div>
+            <div id="cat-list" class="d-none">
+              ${catOpts}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -99,7 +135,6 @@ function addUserModal() {
   document.body.insertAdjacentHTML('beforeend', html);
   new bootstrap.Modal(document.getElementById('addUModal')).show();
 
-  // Auto-set permissions when role changes
   function updatePerms(){
     const role = document.getElementById('nu-role').value;
     const defaults = ROLE_DEFAULTS[role] || [];
@@ -109,18 +144,36 @@ function addUserModal() {
   }
   document.getElementById('nu-role').addEventListener('change', updatePerms);
   updatePerms();
+
+  // Toggle "all students" / individual list
+  document.getElementById('all-students').addEventListener('change', e => {
+    document.getElementById('student-list').classList.toggle('d-none', e.target.checked);
+  });
+  document.getElementById('all-cats').addEventListener('change', e => {
+    document.getElementById('cat-list').classList.toggle('d-none', e.target.checked);
+  });
 }
 
 async function saveUser() {
   const checked = Array.from(document.querySelectorAll('.perm-cb:checked')).map(c => c.value);
+  const allStudents = document.getElementById('all-students').checked;
+  const allCats = document.getElementById('all-cats').checked;
+  const visibleStudents = allStudents ? 'all' :
+    Array.from(document.querySelectorAll('.student-cb:checked')).map(c => c.value).join(',');
+  const visibleCats = allCats ? 'all' :
+    Array.from(document.querySelectorAll('.cat-cb:checked')).map(c => c.value).join(',');
+
   const obj = {
     'שם משתמש': document.getElementById('nu-name').value.trim(),
     'סיסמה': document.getElementById('nu-pass').value.trim(),
     'תפקיד': document.getElementById('nu-role').value,
     'הרשאות': checked.length === 4 ? 'all' : checked.join(','),
+    'תלמידים_מורשים': visibleStudents,
+    'קטגוריות_מורשות': visibleCats,
   };
   if (!obj['שם משתמש'] || !obj['סיסמה']) return alert('שם וסיסמה חובה');
   if (!checked.length) return alert('יש לסמן לפחות מסך אחד');
+  if (!allStudents && !visibleStudents) return alert('יש לבחור לפחות תלמיד אחד או לסמן "כל התלמידים"');
   const r = await api('addUser', [obj]);
   bootstrap.Modal.getInstance(document.getElementById('addUModal')).hide();
   renderSettings();
