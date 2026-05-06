@@ -3,7 +3,9 @@
 // Background sync (optional) pushes to Apps Script when online
 
 const STORAGE_KEY = 'cheder_data';
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzK7LWmXwF1zaOs76wH7JncB19eXr_mfYQol5_k7uZBxq45hOHVIz_FDJPVhOTvF7DksA/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzhRqTLE4fjjDqrH1we-JlGZ15R-ws8b_gfWF1xF1ewailaiyiS_YXqUhRtb3cQghVt/exec';
+const AGENT_TOKEN = 'BHT_AGENT_2026';
+const SHEET_URL = 'https://docs.google.com/spreadsheets/d/16rmLPnUyRPpJZ5YF_l74eRUSbRMrlwJXa1ND0drLNjM/edit';
 
 let _data = null;
 let _online = false;
@@ -79,7 +81,7 @@ async function api(fn, args) {
       obj['מזהה'] = max + 1;
       _data.students.push(obj);
       saveStored(_data);
-      queueSync();
+      syncRowToSheet('תלמידים', obj).then(updateSyncIndicator);
       return { ok: true, data: { rowCount: _data.students.length } };
     }
     case 'addBehavior': {
@@ -87,7 +89,7 @@ async function api(fn, args) {
       if (!obj['תאריך']) obj['תאריך'] = new Date().toISOString();
       _data.behavior.push(obj);
       saveStored(_data);
-      queueSync();
+      syncRowToSheet('מעקב_התנהגות', obj).then(updateSyncIndicator);
       return { ok: true, data: { rowCount: _data.behavior.length } };
     }
     case 'addUser': {
@@ -99,7 +101,7 @@ async function api(fn, args) {
         permissions: obj['הרשאות'],
       });
       saveStored(_data);
-      queueSync();
+      syncRowToSheet('משתמשים', obj).then(updateSyncIndicator);
       return { ok: true };
     }
     case 'exportPDF':
@@ -126,12 +128,23 @@ function queueSync() {
 
 async function syncToBackend() {
   try {
-    const r = await fetch(APPS_SCRIPT_URL + '?action=ping', { method: 'GET', mode: 'cors' });
+    const r = await fetch(APPS_SCRIPT_URL + '?action=ping&token=' + AGENT_TOKEN, { method: 'GET', mode: 'cors' });
     _online = r.ok;
   } catch {
     _online = false;
   }
   updateSyncIndicator();
+}
+
+async function syncRowToSheet(tab, row) {
+  try {
+    const url = APPS_SCRIPT_URL + '?action=cheder_appendRow&token=' + AGENT_TOKEN +
+      '&tab=' + encodeURIComponent(tab) + '&row=' + encodeURIComponent(JSON.stringify(row));
+    const r = await fetch(url, { method: 'GET', mode: 'cors' });
+    if (!r.ok) return false;
+    const d = await r.json();
+    return d.ok;
+  } catch { return false; }
 }
 
 function updateSyncIndicator() {
