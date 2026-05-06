@@ -108,6 +108,7 @@ async function api(fn, args) {
       obj['מזהה'] = max + 1;
       _data.students.push(obj);
       saveStored(_data);
+      markLocalChange();
       syncRowToSheet('תלמידים', obj).then(updateSyncIndicator);
       return { ok: true, data: { rowCount: _data.students.length } };
     }
@@ -121,6 +122,7 @@ async function api(fn, args) {
       }
       _data.behavior.push(obj);
       saveStored(_data);
+      markLocalChange();
       syncRowToSheet('מעקב_התנהגות', obj).then(updateSyncIndicator);
       return { ok: true, data: { rowCount: _data.behavior.length } };
     }
@@ -131,6 +133,7 @@ async function api(fn, args) {
       if (idx < 0) return { ok: false, error: 'not found' };
       _data.students[idx] = Object.assign({}, _data.students[idx], obj);
       saveStored(_data);
+      markLocalChange();
       syncUpdateRow('תלמידים', _data.students[idx], 'מזהה', id).then(updateSyncIndicator);
       return { ok: true };
     }
@@ -140,6 +143,7 @@ async function api(fn, args) {
       if (idx < 0) return { ok: false, error: 'not found' };
       _data.students.splice(idx, 1);
       saveStored(_data);
+      markLocalChange();
       syncDeleteRow('תלמידים', 'מזהה', id).then(updateSyncIndicator);
       return { ok: true };
     }
@@ -150,6 +154,7 @@ async function api(fn, args) {
       if (idx < 0) return { ok: false, error: 'not found' };
       _data.behavior[idx] = Object.assign({}, _data.behavior[idx], obj);
       saveStored(_data);
+      markLocalChange();
       syncUpdateRow('מעקב_התנהגות', _data.behavior[idx], 'מזהה', id).then(updateSyncIndicator);
       return { ok: true };
     }
@@ -159,6 +164,7 @@ async function api(fn, args) {
       if (idx < 0) return { ok: false, error: 'not found' };
       _data.behavior.splice(idx, 1);
       saveStored(_data);
+      markLocalChange();
       syncDeleteRow('מעקב_התנהגות', 'מזהה', id).then(updateSyncIndicator);
       return { ok: true };
     }
@@ -176,6 +182,7 @@ async function api(fn, args) {
         visible_categories: obj['קטגוריות_מורשות'] || obj.visible_categories || 'all',
       };
       saveStored(_data);
+      markLocalChange();
       syncUpdateRow('משתמשים', obj, 'שם משתמש', username).then(updateSyncIndicator);
       return { ok: true };
     }
@@ -186,6 +193,7 @@ async function api(fn, args) {
       if (idx < 0) return { ok: false, error: 'not found' };
       _data.users.splice(idx, 1);
       saveStored(_data);
+      markLocalChange();
       syncDeleteRow('משתמשים', 'שם משתמש', username).then(updateSyncIndicator);
       return { ok: true };
     }
@@ -206,6 +214,7 @@ async function api(fn, args) {
         _data.users.push(newUser);
       }
       saveStored(_data);
+      markLocalChange();
       syncRowToSheet('משתמשים', obj).then(updateSyncIndicator);
       return { ok: true, data: { rowCount: _data.users.length } };
     }
@@ -305,16 +314,28 @@ async function pullFromSheet(tab) {
   } catch { return null; }
 }
 
+// Track local changes — pause pull-from-sheet while user is making changes
+let _lastLocalChange = 0;
+function markLocalChange() {
+  _lastLocalChange = Date.now();
+}
+
 // Bi-directional sync — pull latest from sheet on load
 async function pullAllFromSheet() {
+  // Skip if user changed something in last 30 seconds (let local writes propagate)
+  if (Date.now() - _lastLocalChange < 30000) {
+    console.log('[sync] skipping pull — recent local change');
+    return;
+  }
   const [students, behavior, users] = await Promise.all([
     pullFromSheet('תלמידים'),
     pullFromSheet('מעקב_התנהגות'),
     pullFromSheet('משתמשים'),
   ]);
-  if (students && students.length) _data.students = students;
-  if (behavior && behavior.length) _data.behavior = behavior;
-  if (users && users.length) {
+  // Only overwrite if pull returned non-null (request succeeded)
+  if (students !== null) _data.students = students;
+  if (behavior !== null) _data.behavior = behavior;
+  if (users !== null) {
     _data.users = users.map(u => ({
       username: u['שם משתמש'],
       password_hash: u['סיסמה'],
