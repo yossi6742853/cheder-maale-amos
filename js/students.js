@@ -51,8 +51,39 @@ function drawStudents(list) {
       <td>${s['גיל']||''}</td>
       <td>${s['מחזור']||''}</td>
       <td>${s['טלפון אם']||''}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-primary me-1" onclick="editStudent(${s['מזהה']})"><i class="bi bi-pencil"></i></button>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent(${s['מזהה']})"><i class="bi bi-trash"></i></button>
+      </td>
     </tr>`;
   }).join('');
+}
+
+function editStudent(id) {
+  const s = _students.find(x => String(x['מזהה']) === String(id));
+  if (!s) return;
+  addStudentModal();
+  setTimeout(() => {
+    document.getElementById('ns-fname').value = s['שם פרטי']||'';
+    document.getElementById('ns-lname').value = s['שם משפחה']||'';
+    document.getElementById('ns-age').value = s['גיל']||'';
+    document.getElementById('ns-cycle').value = s['מחזור']||'';
+    document.getElementById('ns-mname').value = s['שם אם']||'';
+    document.getElementById('ns-mphone').value = s['טלפון אם']||'';
+    document.getElementById('ns-fname2').value = s['שם אב']||'';
+    document.getElementById('ns-fphone').value = s['טלפון אב']||'';
+    document.getElementById('ns-addr').value = s['כתובת']||'';
+    // Mark as edit mode
+    document.getElementById('addStudentModal').dataset.editId = id;
+    document.querySelector('#addStudentModal .modal-title').textContent = 'עריכת תלמיד';
+  }, 100);
+}
+
+async function deleteStudent(id) {
+  if (!confirm('בטוח למחוק את התלמיד?')) return;
+  await api('deleteStudent', [id]);
+  renderStudents();
+  loadStats();
 }
 
 function addStudentModal() {
@@ -100,18 +131,14 @@ async function saveStudent() {
     'כתובת': document.getElementById('ns-addr').value,
   };
   if (!obj['שם פרטי']) return alert('שם פרטי חובה');
-  // Auto ID
-  const all = (await api('listStudents', [])).data || [];
-  obj['מזהה'] = all.reduce((m,s) => Math.max(m, parseInt(s['מזהה']) || 0), 0) + 1;
-  const r = await api('addStudent', [obj]);
-  if (r.ok) {
-    bootstrap.Modal.getInstance(document.getElementById('addStudentModal')).hide();
-    renderStudents();
-    loadStats();
+  const editId = document.getElementById('addStudentModal').dataset.editId;
+  if (editId) {
+    obj['מזהה'] = parseInt(editId);
+    await api('updateStudent', [obj]);
   } else {
-    // Fallback: save locally
-    localAppend('listStudents', obj);
-    bootstrap.Modal.getInstance(document.getElementById('addStudentModal')).hide();
-    renderStudents();
+    await api('addStudent', [obj]);
   }
+  bootstrap.Modal.getInstance(document.getElementById('addStudentModal')).hide();
+  renderStudents();
+  loadStats();
 }

@@ -59,11 +59,36 @@ function drawEvents(list) {
     return `<div class="card p-3 mb-2 ${sev}">
       <div class="d-flex justify-content-between">
         <div><span class="cat-badge">${e['קטגוריה']||''}</span><strong class="mx-2">${e['שם תלמיד']||''}</strong></div>
-        <small class="text-muted">${date}</small>
+        <div class="d-flex align-items-center gap-2">
+          <small class="text-muted">${date}</small>
+          <button class="btn btn-sm btn-outline-primary" onclick="editEvent(${e['מזהה']||0})"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteEvent(${e['מזהה']||0})"><i class="bi bi-trash"></i></button>
+        </div>
       </div>
       <p class="mb-0 mt-2">${e['תיאור']||''}</p>
     </div>`;
   }).join('');
+}
+
+function editEvent(id) {
+  const e = _events.find(x => String(x['מזהה']) === String(id));
+  if (!e) return;
+  addEventModal();
+  setTimeout(() => {
+    document.getElementById('ne-student').value = e['תלמיד_מזהה'] || '';
+    document.getElementById('ne-cat').value = e['קטגוריה'] || '';
+    document.getElementById('ne-desc').value = e['תיאור'] || '';
+    document.getElementById('ne-sev').value = e['חומרה'] || 'בינונית';
+    document.getElementById('addEvModal').dataset.editId = id;
+    document.querySelector('#addEvModal h5').textContent = 'עריכת אירוע';
+  }, 100);
+}
+
+async function deleteEvent(id) {
+  if (!confirm('בטוח למחוק את האירוע?')) return;
+  await api('deleteBehavior', [id]);
+  renderBehavior();
+  loadStats();
 }
 
 function addEventModal() {
@@ -86,7 +111,6 @@ async function saveEvent() {
   const sid = document.getElementById('ne-student').value;
   const stu = _allStudents.find(s => String(s['מזהה']) === sid);
   const obj = {
-    'תאריך': new Date().toISOString(),
     'תלמיד_מזהה': sid,
     'שם תלמיד': stu ? `${stu['שם פרטי']||''} ${stu['שם משפחה']||''}` : '',
     'קטגוריה': document.getElementById('ne-cat').value,
@@ -94,13 +118,15 @@ async function saveEvent() {
     'חומרה': document.getElementById('ne-sev').value,
   };
   if (!obj['תלמיד_מזהה'] || !obj['קטגוריה'] || !obj['תיאור']) return alert('כל השדות חובה');
-  const r = await api('addBehavior', [obj]);
-  bootstrap.Modal.getInstance(document.getElementById('addEvModal')).hide();
-  if (r.ok) {
-    renderBehavior();
-    loadStats();
+  const editId = document.getElementById('addEvModal').dataset.editId;
+  if (editId) {
+    obj['מזהה'] = parseInt(editId);
+    await api('updateBehavior', [obj]);
   } else {
-    localAppend('listBehavior', obj);
-    renderBehavior();
+    obj['תאריך'] = new Date().toISOString();
+    await api('addBehavior', [obj]);
   }
+  bootstrap.Modal.getInstance(document.getElementById('addEvModal')).hide();
+  renderBehavior();
+  loadStats();
 }

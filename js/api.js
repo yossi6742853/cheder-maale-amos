@@ -114,10 +114,80 @@ async function api(fn, args) {
     case 'addBehavior': {
       const obj = args[0];
       if (!obj['תאריך']) obj['תאריך'] = new Date().toISOString();
+      // Auto-generate ID if missing
+      if (!obj['מזהה']) {
+        const max = _data.behavior.reduce((m, e) => Math.max(m, parseInt(e['מזהה']) || 0), 0);
+        obj['מזהה'] = max + 1;
+      }
       _data.behavior.push(obj);
       saveStored(_data);
       syncRowToSheet('מעקב_התנהגות', obj).then(updateSyncIndicator);
       return { ok: true, data: { rowCount: _data.behavior.length } };
+    }
+    case 'updateStudent': {
+      const obj = args[0];
+      const id = obj['מזהה'];
+      const idx = _data.students.findIndex(s => String(s['מזהה']) === String(id));
+      if (idx < 0) return { ok: false, error: 'not found' };
+      _data.students[idx] = Object.assign({}, _data.students[idx], obj);
+      saveStored(_data);
+      syncUpdateRow('תלמידים', _data.students[idx], 'מזהה', id).then(updateSyncIndicator);
+      return { ok: true };
+    }
+    case 'deleteStudent': {
+      const id = args[0];
+      const idx = _data.students.findIndex(s => String(s['מזהה']) === String(id));
+      if (idx < 0) return { ok: false, error: 'not found' };
+      _data.students.splice(idx, 1);
+      saveStored(_data);
+      syncDeleteRow('תלמידים', 'מזהה', id).then(updateSyncIndicator);
+      return { ok: true };
+    }
+    case 'updateBehavior': {
+      const obj = args[0];
+      const id = obj['מזהה'];
+      const idx = _data.behavior.findIndex(e => String(e['מזהה']) === String(id));
+      if (idx < 0) return { ok: false, error: 'not found' };
+      _data.behavior[idx] = Object.assign({}, _data.behavior[idx], obj);
+      saveStored(_data);
+      syncUpdateRow('מעקב_התנהגות', _data.behavior[idx], 'מזהה', id).then(updateSyncIndicator);
+      return { ok: true };
+    }
+    case 'deleteBehavior': {
+      const id = args[0];
+      const idx = _data.behavior.findIndex(e => String(e['מזהה']) === String(id));
+      if (idx < 0) return { ok: false, error: 'not found' };
+      _data.behavior.splice(idx, 1);
+      saveStored(_data);
+      syncDeleteRow('מעקב_התנהגות', 'מזהה', id).then(updateSyncIndicator);
+      return { ok: true };
+    }
+    case 'updateUser': {
+      const obj = args[0];
+      const username = obj['שם משתמש'] || obj.username;
+      const idx = _data.users.findIndex(u => u.username === username);
+      if (idx < 0) return { ok: false, error: 'not found' };
+      _data.users[idx] = {
+        username,
+        password_hash: obj['סיסמה'] || obj.password_hash || _data.users[idx].password_hash,
+        role: obj['תפקיד'] || obj.role,
+        permissions: obj['הרשאות'] || obj.permissions,
+        visible_students: obj['תלמידים_מורשים'] || obj.visible_students || 'all',
+        visible_categories: obj['קטגוריות_מורשות'] || obj.visible_categories || 'all',
+      };
+      saveStored(_data);
+      syncUpdateRow('משתמשים', obj, 'שם משתמש', username).then(updateSyncIndicator);
+      return { ok: true };
+    }
+    case 'deleteUser': {
+      const username = args[0];
+      if (username === 'admin') return { ok: false, error: 'אסור למחוק admin' };
+      const idx = _data.users.findIndex(u => u.username === username);
+      if (idx < 0) return { ok: false, error: 'not found' };
+      _data.users.splice(idx, 1);
+      saveStored(_data);
+      syncDeleteRow('משתמשים', 'שם משתמש', username).then(updateSyncIndicator);
+      return { ok: true };
     }
     case 'addUser': {
       const obj = args[0];
@@ -197,6 +267,71 @@ async function syncRowToSheet(tab, row) {
   } catch { return false; }
 }
 
+async function syncUpdateRow(tab, row, matchKey, matchValue) {
+  try {
+    const params = new URLSearchParams({
+      action: 'cheder_updateRow', token: AGENT_TOKEN,
+      tab, row: JSON.stringify(row), matchKey, matchValue: String(matchValue),
+    });
+    const r = await fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'cors' });
+    if (!r.ok) return false;
+    const d = await r.json();
+    return d.ok;
+  } catch { return false; }
+}
+
+async function syncDeleteRow(tab, matchKey, matchValue) {
+  try {
+    const params = new URLSearchParams({
+      action: 'cheder_deleteRow', token: AGENT_TOKEN,
+      tab, matchKey, matchValue: String(matchValue),
+    });
+    const r = await fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'cors' });
+    if (!r.ok) return false;
+    const d = await r.json();
+    return d.ok;
+  } catch { return false; }
+}
+
+async function pullFromSheet(tab) {
+  try {
+    const params = new URLSearchParams({
+      action: 'cheder_listRows', token: AGENT_TOKEN, tab,
+    });
+    const r = await fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'cors' });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return d.ok ? d.rows : null;
+  } catch { return null; }
+}
+
+// Bi-directional sync — pull latest from sheet on load
+async function pullAllFromSheet() {
+  const [students, behavior, users] = await Promise.all([
+    pullFromSheet('תלמידים'),
+    pullFromSheet('מעקב_התנהגות'),
+    pullFromSheet('משתמשים'),
+  ]);
+  if (students && students.length) _data.students = students;
+  if (behavior && behavior.length) _data.behavior = behavior;
+  if (users && users.length) {
+    _data.users = users.map(u => ({
+      username: u['שם משתמש'],
+      password_hash: u['סיסמה'],
+      role: u['תפקיד'],
+      permissions: u['הרשאות'],
+      visible_students: u['תלמידים_מורשים'] || 'all',
+      visible_categories: u['קטגוריות_מורשות'] || 'all',
+    }));
+    if (!_data.users.find(u => u.username === 'admin')) {
+      _data.users.unshift({username:'admin',password_hash:'6742',role:'מנהל',permissions:'all'});
+    }
+  }
+  saveStored(_data);
+  _online = true;
+  updateSyncIndicator();
+}
+
 function updateSyncIndicator() {
   let el = document.getElementById('sync-indicator');
   if (!el) {
@@ -212,5 +347,25 @@ function updateSyncIndicator() {
   }
 }
 
-// Run sync check on load
-window.addEventListener('load', () => setTimeout(syncToBackend, 1000));
+// Run sync check on load + pull latest from sheet
+window.addEventListener('load', () => {
+  setTimeout(async () => {
+    await syncToBackend();
+    if (_online && _data) {
+      await pullAllFromSheet();
+      // Refresh current view
+      try {
+        if (typeof loadStats === 'function') loadStats();
+        const hash = location.hash.replace('#','');
+        if (hash && typeof showPage === 'function') showPage(hash);
+      } catch (e) {}
+    }
+  }, 1500);
+});
+
+// Periodic pull every 60 seconds for true bi-directional sync
+setInterval(async () => {
+  if (_online && _data) {
+    await pullAllFromSheet();
+  }
+}, 60000);

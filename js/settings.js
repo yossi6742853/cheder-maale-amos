@@ -8,7 +8,7 @@ async function renderSettings() {
     <div class="card p-3 mb-3">
       <h5>משתמשים</h5>
       <table class="table table-hover">
-        <thead><tr><th>שם משתמש</th><th>תפקיד</th><th>הרשאות</th></tr></thead>
+        <thead><tr><th>שם משתמש</th><th>תפקיד</th><th>הרשאות</th><th>פעולות</th></tr></thead>
         <tbody id="users-tbody"></tbody>
       </table>
     </div>
@@ -34,8 +34,61 @@ async function renderSettings() {
     const cls = role === 'מנהל' ? 'role-admin' : role === 'רב' ? 'role-rabbi' : 'role-readonly';
     const perms = (u['הרשאות']||'').split(',').map(p => p.trim()).filter(Boolean);
     const permBadges = perms.map(p => `<span class="cat-badge me-1">${PERM_LABELS[p]||p}</span>`).join(' ');
-    return `<tr><td>${u['שם משתמש']||''}</td><td><span class="badge ${cls}">${role}</span></td><td>${permBadges}</td></tr>`;
+    const isAdmin = u['שם משתמש'] === 'admin';
+    const actions = isAdmin ? '' :
+      `<button class="btn btn-sm btn-outline-primary me-1" onclick="editUser('${u['שם משתמש']}')"><i class="bi bi-pencil"></i></button>
+       <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('${u['שם משתמש']}')"><i class="bi bi-trash"></i></button>`;
+    return `<tr><td>${u['שם משתמש']||''}</td><td><span class="badge ${cls}">${role}</span></td><td>${permBadges}</td><td>${actions}</td></tr>`;
   }).join('');
+}
+
+async function editUser(username) {
+  const data = getData();
+  const u = data.users.find(x => x.username === username);
+  if (!u) return;
+  addUserModal();
+  setTimeout(() => {
+    document.getElementById('nu-name').value = u.username;
+    document.getElementById('nu-name').readOnly = true;
+    document.getElementById('nu-pass').value = u.password_hash || '';
+    document.getElementById('nu-role').value = u.role || 'מורה';
+    document.getElementById('nu-role').dispatchEvent(new Event('change'));
+    // Permissions
+    const perms = (u.permissions || '').split(',').map(s=>s.trim());
+    PERMISSION_AREAS.forEach(a => {
+      document.getElementById('perm-' + a.key).checked = u.permissions === 'all' || perms.includes(a.key);
+    });
+    // Visible students
+    const allStu = !u.visible_students || u.visible_students === 'all';
+    document.getElementById('all-students').checked = allStu;
+    document.getElementById('all-students').dispatchEvent(new Event('change'));
+    if (!allStu) {
+      const ids = u.visible_students.split(',').map(s=>s.trim());
+      ids.forEach(id => {
+        const cb = document.getElementById('stu-' + id);
+        if (cb) cb.checked = true;
+      });
+    }
+    // Visible categories
+    const allCat = !u.visible_categories || u.visible_categories === 'all';
+    document.getElementById('all-cats').checked = allCat;
+    document.getElementById('all-cats').dispatchEvent(new Event('change'));
+    if (!allCat) {
+      const cats = u.visible_categories.split(',').map(s=>s.trim());
+      cats.forEach(c => {
+        const cb = document.getElementById('cat-' + c.replace(/\s/g,'_'));
+        if (cb) cb.checked = true;
+      });
+    }
+    document.getElementById('addUModal').dataset.editMode = '1';
+    document.querySelector('#addUModal h5').textContent = 'עריכת משתמש: ' + username;
+  }, 100);
+}
+
+async function deleteUser(username) {
+  if (!confirm('בטוח למחוק את ' + username + '?')) return;
+  await api('deleteUser', [username]);
+  renderSettings();
 }
 
 const PERMISSION_AREAS = [
@@ -174,7 +227,8 @@ async function saveUser() {
   if (!obj['שם משתמש'] || !obj['סיסמה']) return alert('שם וסיסמה חובה');
   if (!checked.length) return alert('יש לסמן לפחות מסך אחד');
   if (!allStudents && !visibleStudents) return alert('יש לבחור לפחות תלמיד אחד או לסמן "כל התלמידים"');
-  const r = await api('addUser', [obj]);
+  const editMode = document.getElementById('addUModal').dataset.editMode === '1';
+  const r = editMode ? await api('updateUser', [obj]) : await api('addUser', [obj]);
   bootstrap.Modal.getInstance(document.getElementById('addUModal')).hide();
   renderSettings();
 }
