@@ -15,7 +15,7 @@ async function renderSettings() {
     <div class="card p-3">
       <h5>אודות המערכת</h5>
       <ul class="mb-0">
-        <li>מערכת חדר מעלה עמוס - גרסה 1.0</li>
+        <li>מערכת תלמוד תורה מעלה עמוס - גרסה 1.0</li>
         <li>backend: Google Apps Script + Google Sheets</li>
         <li>אחסון מקומי כגיבוי (localStorage)</li>
         <li>RTL עברית מלא</li>
@@ -122,7 +122,7 @@ function addUserModal() {
   const studentOpts = data.students.map(s => `
     <div class="form-check">
       <input class="form-check-input student-cb" type="checkbox" value="${s['מזהה']}" id="stu-${s['מזהה']}">
-      <label class="form-check-label" for="stu-${s['מזהה']}">${s['שם פרטי']||''} ${s['שם משפחה']||''} <small class="text-muted">(${s['מחזור']||''})</small></label>
+      <label class="form-check-label" for="stu-${s['מזהה']}">${s['שם פרטי']||''} ${s['שם משפחה']||''} <small class="text-muted">(${s['כיתה']||''})</small></label>
     </div>`).join('');
 
   const catOpts = data.categories.map(c => `
@@ -235,7 +235,7 @@ async function saveUser() {
 
 async function renderReports() {
   const data = getData();
-  const cycles = [...new Set(data.students.map(s => s['מחזור']).filter(Boolean))];
+  const cycles = [...new Set(data.students.map(s => s['כיתה']).filter(Boolean))];
   const cats = data.categories.map(c => c.name);
   const sevs = ['גבוהה','בינונית','נמוכה'];
 
@@ -254,9 +254,9 @@ async function renderReports() {
           </select>
         </div>
         <div class="col-md-3">
-          <label class="form-label small">מחזור</label>
+          <label class="form-label small">כיתה</label>
           <select id="r-cycle" class="form-select form-select-sm">
-            <option value="">כל המחזורים</option>
+            <option value="">כל הכיתות</option>
             ${cycles.map(c => `<option value="${c}">${c}</option>`).join('')}
           </select>
         </div>
@@ -309,7 +309,7 @@ function applyReportFilters() {
 
   _filteredStudents = data.students.filter(s => {
     if (sId && String(s['מזהה']) !== sId) return false;
-    if (cycle && s['מחזור'] !== cycle) return false;
+    if (cycle && s['כיתה'] !== cycle) return false;
     return true;
   });
 
@@ -322,7 +322,7 @@ function applyReportFilters() {
     if (to && dt > new Date(to+'T23:59:59')) return false;
     if (cycle) {
       const stu = data.students.find(s => String(s['מזהה']) === String(e['תלמיד_מזהה']));
-      if (!stu || stu['מחזור'] !== cycle) return false;
+      if (!stu || stu['כיתה'] !== cycle) return false;
     }
     return true;
   });
@@ -346,10 +346,10 @@ function drawReportResults() {
     </div>`;
 
   if (_filteredStudents.length) {
-    html += '<div class="card p-3 mb-3"><h6><i class="bi bi-people"></i> תלמידים</h6><table class="table table-sm"><thead><tr><th>שם</th><th>מחזור</th><th>טלפון אם</th><th>אירועים</th></tr></thead><tbody>';
+    html += '<div class="card p-3 mb-3"><h6><i class="bi bi-people"></i> תלמידים</h6><table class="table table-sm"><thead><tr><th>שם</th><th>כיתה</th><th>טלפון אם</th><th>אירועים</th></tr></thead><tbody>';
     _filteredStudents.forEach(s => {
       const cnt = _filteredEvents.filter(e => String(e['תלמיד_מזהה']) === String(s['מזהה'])).length;
-      html += `<tr><td><strong>${s['שם פרטי']||''} ${s['שם משפחה']||''}</strong></td><td>${s['מחזור']||''}</td><td>${s['טלפון אם']||''}</td><td><span class="badge bg-secondary">${cnt}</span></td></tr>`;
+      html += `<tr><td><strong>${s['שם פרטי']||''} ${s['שם משפחה']||''}</strong></td><td>${s['כיתה']||''}</td><td>${s['טלפון אם']||''}</td><td><span class="badge bg-secondary">${cnt}</span></td></tr>`;
     });
     html += '</tbody></table></div>';
   }
@@ -383,9 +383,9 @@ function resetReportFilters() {
 function exportFilteredCSV() {
   let csv = '﻿';  // BOM for Excel Hebrew
   csv += 'תלמידים\n';
-  csv += 'מזהה,שם,גיל,מחזור,טלפון אם,טלפון אב\n';
+  csv += 'מזהה,שם,גיל,כיתה,טלפון אם,טלפון אב\n';
   _filteredStudents.forEach(s => {
-    csv += `${s['מזהה']||''},"${s['שם פרטי']||''} ${s['שם משפחה']||''}",${s['גיל']||''},${s['מחזור']||''},${s['טלפון אם']||''},${s['טלפון אב']||''}\n`;
+    csv += `${s['מזהה']||''},"${s['שם פרטי']||''} ${s['שם משפחה']||''}",${s['גיל']||''},${s['כיתה']||''},${s['טלפון אם']||''},${s['טלפון אב']||''}\n`;
   });
   csv += '\nאירועי התנהגות\n';
   csv += 'תאריך,תלמיד,קטגוריה,חומרה,תיאור\n';
@@ -416,9 +416,9 @@ td{padding:6px 8px;border:1px solid #e5e7eb}
 @media print{.print-btn{display:none}}
 </style></head><body>
 <button class="print-btn" onclick="window.print()" style="background:#0066cc;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;margin-bottom:20px">🖨 הדפס</button>
-<h1>דוח חדר מעלה עמוס - ${today}</h1>
+<h1>דוח תלמוד תורה מעלה עמוס - ${today}</h1>
 <p>תלמידים: ${_filteredStudents.length} · אירועים: ${_filteredEvents.length}</p>
-${_filteredStudents.length ? `<h2>תלמידים</h2><table><tr><th>שם</th><th>גיל</th><th>מחזור</th><th>טלפון</th></tr>${_filteredStudents.map(s=>`<tr><td>${s['שם פרטי']||''} ${s['שם משפחה']||''}</td><td>${s['גיל']||''}</td><td>${s['מחזור']||''}</td><td>${s['טלפון אם']||''}</td></tr>`).join('')}</table>` : ''}
+${_filteredStudents.length ? `<h2>תלמידים</h2><table><tr><th>שם</th><th>גיל</th><th>כיתה</th><th>טלפון</th></tr>${_filteredStudents.map(s=>`<tr><td>${s['שם פרטי']||''} ${s['שם משפחה']||''}</td><td>${s['גיל']||''}</td><td>${s['כיתה']||''}</td><td>${s['טלפון אם']||''}</td></tr>`).join('')}</table>` : ''}
 ${_filteredEvents.length ? `<h2>אירועי התנהגות</h2>${_filteredEvents.map(e=>{const c=e['חומרה']==='גבוהה'?'high':e['חומרה']==='נמוכה'?'low':'mid';return `<div class="event ${c}"><strong>${e['שם תלמיד']||''}</strong> · ${e['קטגוריה']||''} · ${new Date(e['תאריך']).toLocaleString('he-IL')}<br>${e['תיאור']||''}</div>`}).join('')}` : ''}
 <script>setTimeout(()=>window.print(), 500);</script>
 </body></html>`;
@@ -440,7 +440,7 @@ function generateReport(type) {
     title = 'מעקב התנהגות';
     content = renderBehaviorReport(data.behavior, data.students);
   } else {
-    title = 'דוח מלא - חדר מעלה עמוס';
+    title = 'דוח מלא - תלמוד תורה מעלה עמוס';
     content = renderStudentsReport(data.students) + '<div style="page-break-after:always"></div>' + renderBehaviorReport(data.behavior, data.students);
   }
 
@@ -472,7 +472,7 @@ tr:nth-child(even) td{background:#fafafa}
 <button class="print-btn" onclick="window.print()">🖨 הדפס/שמור PDF</button>
 <div class="header">
   <h1>${title}</h1>
-  <div class="subtitle">חדר מעלה עמוס · הופק ב-${today} בשעה ${time}</div>
+  <div class="subtitle">תלמוד תורה מעלה עמוס · הופק ב-${today} בשעה ${time}</div>
 </div>
 ${content}
 <script>setTimeout(()=>window.print(), 500);</script>
@@ -487,15 +487,15 @@ function renderStudentsReport(students) {
   if (!students.length) return '<div class="section"><p>אין תלמידים רשומים.</p></div>';
   const stats = `<div class="stats">
     <div class="stat"><div class="stat-num">${students.length}</div><div class="stat-label">תלמידים</div></div>
-    <div class="stat"><div class="stat-num">${new Set(students.map(s=>s['מחזור'])).size}</div><div class="stat-label">מחזורים</div></div>
+    <div class="stat"><div class="stat-num">${new Set(students.map(s=>s['כיתה'])).size}</div><div class="stat-label">כיתות</div></div>
   </div>`;
-  let table = '<table><thead><tr><th>מזהה</th><th>שם מלא</th><th>גיל</th><th>מחזור</th><th>שם אם</th><th>טלפון אם</th><th>שם אב</th><th>טלפון אב</th><th>כתובת</th></tr></thead><tbody>';
+  let table = '<table><thead><tr><th>מזהה</th><th>שם מלא</th><th>גיל</th><th>כיתה</th><th>שם אם</th><th>טלפון אם</th><th>שם אב</th><th>טלפון אב</th><th>כתובת</th></tr></thead><tbody>';
   students.forEach(s => {
     table += `<tr>
       <td>${s['מזהה']||''}</td>
       <td><strong>${s['שם פרטי']||''} ${s['שם משפחה']||''}</strong></td>
       <td>${s['גיל']||''}</td>
-      <td>${s['מחזור']||''}</td>
+      <td>${s['כיתה']||''}</td>
       <td>${s['שם אם']||''}</td>
       <td>${s['טלפון אם']||''}</td>
       <td>${s['שם אב']||''}</td>

@@ -17,7 +17,7 @@ async function renderStudents() {
       <div class="table-responsive">
         <table class="table table-hover">
           <thead>
-            <tr><th>מזהה</th><th>שם מלא</th><th>גיל</th><th>מחזור</th><th>טלפון אם</th></tr>
+            <tr><th>מזהה</th><th>שם מלא</th><th>גיל</th><th>כיתה</th><th>טלפון אם</th></tr>
           </thead>
           <tbody id="students-tbody"></tbody>
         </table>
@@ -53,7 +53,7 @@ function drawStudents(list) {
       <td onclick="viewStudent(${s['מזהה']})">${s['מזהה']||''}</td>
       <td onclick="viewStudent(${s['מזהה']})"><span class="avatar">${initials}</span>${fullName}</td>
       <td onclick="viewStudent(${s['מזהה']})">${s['גיל']||''}</td>
-      <td onclick="viewStudent(${s['מזהה']})">${s['מחזור']||''}</td>
+      <td onclick="viewStudent(${s['מזהה']})">${s['כיתה']||''}</td>
       <td onclick="viewStudent(${s['מזהה']})">${s['טלפון אם']||''}</td>
       <td>
         <button class="btn btn-sm btn-outline-info me-1" onclick="viewStudent(${s['מזהה']})" title="צפייה"><i class="bi bi-eye"></i></button>
@@ -85,7 +85,7 @@ async function viewStudent(id) {
     <div class="modal-body">
       <div class="row g-2 mb-3">
         <div class="col-md-3"><div class="card p-2 text-center"><strong>${s['גיל']||'-'}</strong><div class="small text-muted">גיל</div></div></div>
-        <div class="col-md-3"><div class="card p-2 text-center"><strong>${s['מחזור']||'-'}</strong><div class="small text-muted">מחזור</div></div></div>
+        <div class="col-md-3"><div class="card p-2 text-center"><strong>${s['כיתה']||'-'}</strong><div class="small text-muted">כיתה</div></div></div>
         <div class="col-md-3"><div class="card p-2 text-center"><strong>${events.length}</strong><div class="small text-muted">אירועים</div></div></div>
         <div class="col-md-3"><div class="card p-2 text-center"><strong>${events.filter(e=>e['חומרה']==='גבוהה').length}</strong><div class="small text-muted">חומרה גבוהה</div></div></div>
       </div>
@@ -119,7 +119,7 @@ function editStudent(id) {
     document.getElementById('ns-fname').value = s['שם פרטי']||'';
     document.getElementById('ns-lname').value = s['שם משפחה']||'';
     document.getElementById('ns-age').value = s['גיל']||'';
-    document.getElementById('ns-cycle').value = s['מחזור']||'';
+    document.getElementById('ns-cycle').value = s['כיתה']||'';
     document.getElementById('ns-mname').value = s['שם אם']||'';
     document.getElementById('ns-mphone').value = s['טלפון אם']||'';
     document.getElementById('ns-fname2').value = s['שם אב']||'';
@@ -149,7 +149,7 @@ async function emailParentSummary(id) {
   if (!motherEmail) return;
   const subject = `סיכום התנהגות — ${fullName}`;
   const lines = [`שלום,`, ``, `הנה סיכום עדכני של ${fullName}:`, ``];
-  lines.push(`גיל: ${s['גיל']||'-'} | מחזור: ${s['מחזור']||'-'}`);
+  lines.push(`גיל: ${s['גיל']||'-'} | כיתה: ${s['כיתה']||'-'}`);
   lines.push(`סך כל אירועים: ${events.length} | חומרה גבוהה: ${events.filter(e=>e['חומרה']==='גבוהה').length}`);
   lines.push(``);
   if (events.length) {
@@ -167,9 +167,9 @@ async function emailParentSummary(id) {
 
 function exportStudentsCSV() {
   let csv = '﻿';  // BOM
-  csv += 'מזהה,שם פרטי,שם משפחה,גיל,מחזור,שם אם,טלפון אם,שם אב,טלפון אב,כתובת,הערות\n';
+  csv += 'מזהה,שם פרטי,שם משפחה,גיל,כיתה,שם אם,טלפון אם,שם אב,טלפון אב,כתובת,הערות\n';
   _students.forEach(s => {
-    const fields = ['מזהה','שם פרטי','שם משפחה','גיל','מחזור','שם אם','טלפון אם','שם אב','טלפון אב','כתובת','הערות'];
+    const fields = ['מזהה','שם פרטי','שם משפחה','גיל','כיתה','שם אם','טלפון אם','שם אב','טלפון אב','כתובת','הערות'];
     csv += fields.map(f => `"${(s[f]||'').toString().replace(/"/g,'""')}"`).join(',') + '\n';
   });
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
@@ -256,7 +256,7 @@ td{padding:5pt;border:1px solid #e5e7eb}
 <h1>${fullName}</h1>
 <p>בית התלמוד · בית שמש · ${today}</p>
 <table>
-<tr><th>גיל</th><td>${s['גיל']||'-'}</td><th>מחזור</th><td>${s['מחזור']||'-'}</td></tr>
+<tr><th>גיל</th><td>${s['גיל']||'-'}</td><th>כיתה</th><td>${s['כיתה']||'-'}</td></tr>
 <tr><th>שם אם</th><td>${s['שם אם']||'-'}</td><th>טלפון אם</th><td>${s['טלפון אם']||'-'}</td></tr>
 <tr><th>שם אב</th><td>${s['שם אב']||'-'}</td><th>טלפון אב</th><td>${s['טלפון אב']||'-'}</td></tr>
 <tr><th>כתובת</th><td colspan="3">${s['כתובת']||'-'}</td></tr>
@@ -284,7 +284,7 @@ function addStudentModal() {
               <div class="col-6"><label class="form-label small">שם פרטי</label><input id="ns-fname" class="form-control"></div>
               <div class="col-6"><label class="form-label small">שם משפחה</label><input id="ns-lname" class="form-control"></div>
               <div class="col-4"><label class="form-label small">גיל</label><input id="ns-age" type="number" class="form-control"></div>
-              <div class="col-8"><label class="form-label small">מחזור</label><input id="ns-cycle" class="form-control"></div>
+              <div class="col-8"><label class="form-label small">כיתה</label><input id="ns-cycle" class="form-control"></div>
               <div class="col-6"><label class="form-label small">שם אם</label><input id="ns-mname" class="form-control"></div>
               <div class="col-6"><label class="form-label small">טלפון אם</label><input id="ns-mphone" class="form-control"></div>
               <div class="col-6"><label class="form-label small">שם אב</label><input id="ns-fname2" class="form-control"></div>
@@ -310,7 +310,7 @@ async function saveStudent() {
     'שם פרטי': document.getElementById('ns-fname').value,
     'שם משפחה': document.getElementById('ns-lname').value,
     'גיל': document.getElementById('ns-age').value,
-    'מחזור': document.getElementById('ns-cycle').value,
+    'כיתה': document.getElementById('ns-cycle').value,
     'שם אם': document.getElementById('ns-mname').value,
     'טלפון אם': document.getElementById('ns-mphone').value,
     'שם אב': document.getElementById('ns-fname2').value,
