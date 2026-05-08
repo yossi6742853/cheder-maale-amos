@@ -14,12 +14,15 @@ async function renderSettings() {
     </div>
     <div class="card p-3">
       <h5>אודות המערכת</h5>
-      <ul class="mb-0">
+      <ul class="mb-2">
         <li>מערכת תלמוד תורה מעלה עמוס - גרסה 1.0</li>
         <li>backend: Google Apps Script + Google Sheets</li>
         <li>אחסון מקומי כגיבוי (localStorage)</li>
         <li>RTL עברית מלא</li>
       </ul>
+      <a href="${SHEET_URL}" target="_blank" rel="noopener" class="btn btn-success">
+        <i class="bi bi-table"></i> פתח את קובץ הנתונים בגוגל שיטס
+      </a>
     </div>`;
   const r = await api('listUsers', []);
   const users = r.data || [];
