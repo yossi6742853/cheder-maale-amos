@@ -2,9 +2,10 @@
 // Reads from data/*.json (committed in repo), writes to localStorage
 // Background sync (optional) pushes to Apps Script when online
 
-const STORAGE_KEY = 'cheder_data';
+const STORAGE_KEY = 'cheder_maale_data';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzhRqTLE4fjjDqrH1we-JlGZ15R-ws8b_gfWF1xF1ewailaiyiS_YXqUhRtb3cQghVt/exec';
 const AGENT_TOKEN = 'BHT_AGENT_2026';
+const INSTANCE = '';
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/16rmLPnUyRPpJZ5YF_l74eRUSbRMrlwJXa1ND0drLNjM/edit';
 
 let _data = null;
@@ -31,20 +32,25 @@ async function fetchJson(path) {
 async function loadData() {
   const stored = loadStored();
   // Try fetching latest JSON files
-  const [studentsJ, behaviorJ, usersJ, categoriesJ] = await Promise.all([
+  const [studentsJ, behaviorJ, usersJ, categoriesJ, classesJ] = await Promise.all([
     fetchJson('data/students.json'),
     fetchJson('data/behavior.json'),
     fetchJson('data/users.json'),
     fetchJson('data/categories.json'),
+    fetchJson('data/classes.json'),
   ]);
+  const useStored = (arr) => Array.isArray(arr) && arr.length > 0;
   _data = {
-    students: stored.students || (studentsJ && studentsJ.students) || [],
-    behavior: stored.behavior || (behaviorJ && behaviorJ.events) || [],
-    users: stored.users || (usersJ && usersJ.users) || [{username:'admin',password_hash:'6742',role:'מנהל',permissions:'all'}],
+    students: useStored(stored.students) ? stored.students : ((studentsJ && studentsJ.students) || []),
+    behavior: useStored(stored.behavior) ? stored.behavior : ((behaviorJ && behaviorJ.events) || []),
+    users: useStored(stored.users) ? stored.users : ((usersJ && usersJ.users) || [{username:'admin',password_hash:'6742',role:'מנהל',permissions:'all'}]),
     categories: (categoriesJ && categoriesJ.categories) || [],
+    classes: useStored(stored.classes) ? stored.classes : ((classesJ && classesJ.classes) || []),
   };
-  // Always make sure admin exists
-  if (!_data.users.find(u => u.username === 'admin')) {
+  // Default status to פעיל for legacy students
+  _data.students.forEach(s => { if (!s['סטטוס']) s['סטטוס'] = 'פעיל'; });
+  // Always make sure at least one admin exists
+  if (!_data.users.find(u => u.role === 'מנהל')) {
     _data.users.unshift({username:'admin',password_hash:'6742',role:'מנהל',permissions:'all'});
     saveStored(_data);
   }
@@ -125,11 +131,145 @@ async function api(fn, args) {
       const obj = args[0];
       const max = _data.students.reduce((m, s) => Math.max(m, parseInt(s['מזהה']) || 0), 0);
       obj['מזהה'] = max + 1;
+      if (!obj['סטטוס']) obj['סטטוס'] = 'פעיל';
       _data.students.push(obj);
       saveStored(_data);
       markLocalChange();
       syncRowToSheet('תלמידים', obj).then(updateSyncIndicator);
       return { ok: true, data: { rowCount: _data.students.length } };
+    }
+    case 'listClasses':
+      return { ok: true, data: [..._data.classes].sort((a,b) => (parseInt(a['סדר'])||0) - (parseInt(b['סדר'])||0)) };
+    case 'addClass': {
+      const obj = args[0];
+      if (!obj['שם']) return { ok: false, error: 'שם כיתה חובה' };
+      if (_data.classes.find(c => c['שם'] === obj['שם'])) return { ok: false, error: 'כיתה כבר קיימת' };
+      const maxOrder = _data.classes.reduce((m,c) => Math.max(m, parseInt(c['סדר'])||0), 0);
+      if (!obj['סדר']) obj['סדר'] = maxOrder + 1;
+      _data.classes.push(obj);
+      saveStored(_data);
+      markLocalChange();
+      syncRowToSheet('כיתות', obj).then(updateSyncIndicator);
+      return { ok: true };
+    }
+    case 'updateClass': {
+      const obj = args[0];
+      const oldName = obj['שם קודם'] || obj['שם'];
+      const idx = _data.classes.findIndex(c => c['שם'] === oldName);
+      if (idx < 0) return { ok: false, error: 'not found' };
+      const cleanObj = { 'שם': obj['שם'], 'סדר': obj['סדר'] };
+      _data.classes[idx] = cleanObj;
+      // If renamed, update all students with old class name
+      if (oldName !== cleanObj['שם']) {
+        _data.students.forEach(s => {
+          if (s['מחזור'] === oldName) {
+            s['מחזור'] = cleanObj['שם'];
+            syncUpdateRow('תלמידים', s, 'מזהה', s['מזהה']);
+          }
+        });
+      }
+      saveStored(_data);
+      markLocalChange();
+      if (oldName !== cleanObj['שם']) {
+        syncDeleteRow('כיתות', 'שם', oldName).then(() =>
+          syncRowToSheet('כיתות', cleanObj).then(updateSyncIndicator));
+      } else {
+        syncUpdateRow('כיתות', cleanObj, 'שם', oldName).then(updateSyncIndicator);
+      }
+      return { ok: true };
+    }
+    case 'deleteClass': {
+      const name = args[0];
+      const inUse = _data.students.filter(s => s['מחזור'] === name && s['סטטוס'] !== 'סיים').length;
+      if (inUse > 0) return { ok: false, error: `יש ${inUse} תלמידים פעילים בכיתה זו — אי אפשר למחוק` };
+      const idx = _data.classes.findIndex(c => c['שם'] === name);
+      if (idx < 0) return { ok: false, error: 'not found' };
+      _data.classes.splice(idx, 1);
+      saveStored(_data);
+      markLocalChange();
+      syncDeleteRow('כיתות', 'שם', name).then(updateSyncIndicator);
+      return { ok: true };
+    }
+    case 'promoteStudent': {
+      // Move single student to next class up
+      const id = args[0];
+      const idx = _data.students.findIndex(s => String(s['מזהה']) === String(id));
+      if (idx < 0) return { ok: false, error: 'not found' };
+      const stu = _data.students[idx];
+      const sorted = [..._data.classes].sort((a,b) => parseInt(a['סדר']) - parseInt(b['סדר']));
+      const curIdx = sorted.findIndex(c => c['שם'] === stu['מחזור']);
+      if (curIdx < 0) return { ok: false, error: 'הכיתה הנוכחית לא מוגדרת ברשימה' };
+      if (curIdx === sorted.length - 1) {
+        // Last class — graduate
+        stu['סטטוס'] = 'סיים';
+      } else {
+        stu['מחזור'] = sorted[curIdx + 1]['שם'];
+      }
+      saveStored(_data);
+      markLocalChange();
+      syncUpdateRow('תלמידים', stu, 'מזהה', stu['מזהה']).then(updateSyncIndicator);
+      return { ok: true, data: { newClass: stu['מחזור'], status: stu['סטטוס'] } };
+    }
+    case 'demoteStudent': {
+      const id = args[0];
+      const idx = _data.students.findIndex(s => String(s['מזהה']) === String(id));
+      if (idx < 0) return { ok: false, error: 'not found' };
+      const stu = _data.students[idx];
+      const sorted = [..._data.classes].sort((a,b) => parseInt(a['סדר']) - parseInt(b['סדר']));
+      const curIdx = sorted.findIndex(c => c['שם'] === stu['מחזור']);
+      if (curIdx <= 0) return { ok: false, error: 'אי אפשר להוריד מהכיתה הראשונה' };
+      stu['מחזור'] = sorted[curIdx - 1]['שם'];
+      stu['סטטוס'] = 'פעיל';
+      saveStored(_data);
+      markLocalChange();
+      syncUpdateRow('תלמידים', stu, 'מזהה', stu['מזהה']).then(updateSyncIndicator);
+      return { ok: true };
+    }
+    case 'deactivateStudent': {
+      const id = args[0];
+      const idx = _data.students.findIndex(s => String(s['מזהה']) === String(id));
+      if (idx < 0) return { ok: false, error: 'not found' };
+      _data.students[idx]['סטטוס'] = 'סיים';
+      saveStored(_data);
+      markLocalChange();
+      syncUpdateRow('תלמידים', _data.students[idx], 'מזהה', id).then(updateSyncIndicator);
+      return { ok: true };
+    }
+    case 'reactivateStudent': {
+      const id = args[0];
+      const idx = _data.students.findIndex(s => String(s['מזהה']) === String(id));
+      if (idx < 0) return { ok: false, error: 'not found' };
+      _data.students[idx]['סטטוס'] = 'פעיל';
+      saveStored(_data);
+      markLocalChange();
+      syncUpdateRow('תלמידים', _data.students[idx], 'מזהה', id).then(updateSyncIndicator);
+      return { ok: true };
+    }
+    case 'promoteAll': {
+      // Bulk year promotion: every active student moves up; last class graduates
+      const sorted = [..._data.classes].sort((a,b) => parseInt(a['סדר']) - parseInt(b['סדר']));
+      if (!sorted.length) return { ok: false, error: 'אין כיתות מוגדרות' };
+      let promoted = 0, graduated = 0, skipped = 0;
+      const updates = [];
+      _data.students.forEach(stu => {
+        if (stu['סטטוס'] === 'סיים') { skipped++; return; }
+        const curIdx = sorted.findIndex(c => c['שם'] === stu['מחזור']);
+        if (curIdx < 0) { skipped++; return; }
+        if (curIdx === sorted.length - 1) {
+          stu['סטטוס'] = 'סיים';
+          graduated++;
+        } else {
+          stu['מחזור'] = sorted[curIdx + 1]['שם'];
+          promoted++;
+        }
+        updates.push(stu);
+      });
+      saveStored(_data);
+      markLocalChange();
+      // Sync each updated student in background
+      updates.forEach(s => syncUpdateRow('תלמידים', s, 'מזהה', s['מזהה']));
+      setTimeout(updateSyncIndicator, 1000);
+      return { ok: true, data: { promoted, graduated, skipped } };
     }
     case 'addBehavior': {
       const obj = args[0];
@@ -189,27 +329,56 @@ async function api(fn, args) {
     }
     case 'updateUser': {
       const obj = args[0];
-      const username = obj['שם משתמש'] || obj.username;
-      const idx = _data.users.findIndex(u => u.username === username);
+      const newUsername = obj['שם משתמש'] || obj.username;
+      const lookupUsername = obj['שם משתמש קודם'] || newUsername;
+      const idx = _data.users.findIndex(u => u.username === lookupUsername);
       if (idx < 0) return { ok: false, error: 'not found' };
-      _data.users[idx] = {
-        username,
+      const updated = {
+        username: newUsername,
         password_hash: obj['סיסמה'] || obj.password_hash || _data.users[idx].password_hash,
         role: obj['תפקיד'] || obj.role,
         permissions: obj['הרשאות'] || obj.permissions,
         visible_students: obj['תלמידים_מורשים'] || obj.visible_students || 'all',
         visible_categories: obj['קטגוריות_מורשות'] || obj.visible_categories || 'all',
       };
+      _data.users[idx] = updated;
       saveStored(_data);
       markLocalChange();
-      syncUpdateRow('משתמשים', obj, 'שם משתמש', username).then(updateSyncIndicator);
+      // Build clean sheet payload (no internal-only field)
+      const sheetObj = {
+        'שם משתמש': newUsername,
+        'סיסמה': updated.password_hash,
+        'תפקיד': updated.role,
+        'הרשאות': updated.permissions,
+        'תלמידים_מורשים': updated.visible_students,
+        'קטגוריות_מורשות': updated.visible_categories,
+      };
+      // If renamed, delete old + add new in sheet; otherwise update
+      if (lookupUsername !== newUsername) {
+        syncDeleteRow('משתמשים', 'שם משתמש', lookupUsername).then(() =>
+          syncRowToSheet('משתמשים', sheetObj).then(updateSyncIndicator));
+      } else {
+        syncUpdateRow('משתמשים', sheetObj, 'שם משתמש', newUsername).then(updateSyncIndicator);
+      }
+      // If session belongs to renamed user, refresh session
+      const sess = JSON.parse(sessionStorage.getItem('user') || '{}');
+      if (sess.username === lookupUsername) {
+        sess.username = newUsername;
+        sess.role = updated.role;
+        sess.permissions = updated.permissions;
+        sessionStorage.setItem('user', JSON.stringify(sess));
+      }
       return { ok: true };
     }
     case 'deleteUser': {
       const username = args[0];
-      if (username === 'admin') return { ok: false, error: 'אסור למחוק admin' };
       const idx = _data.users.findIndex(u => u.username === username);
       if (idx < 0) return { ok: false, error: 'not found' };
+      const target = _data.users[idx];
+      const adminCount = _data.users.filter(u => u.role === 'מנהל').length;
+      if (target.role === 'מנהל' && adminCount === 1) {
+        return { ok: false, error: 'לא ניתן למחוק את המנהל היחיד' };
+      }
       _data.users.splice(idx, 1);
       saveStored(_data);
       markLocalChange();
@@ -278,15 +447,27 @@ async function syncToBackend() {
   try {
     const r = await fetch(APPS_SCRIPT_URL + '?action=ping&token=' + AGENT_TOKEN, { method: 'GET', mode: 'cors' });
     _online = r.ok;
+    if (_online) ensureSchemaOnce();
   } catch {
     _online = false;
   }
   updateSyncIndicator();
 }
 
+let _schemaEnsured = false;
+async function ensureSchemaOnce() {
+  if (_schemaEnsured) return;
+  _schemaEnsured = true;
+  try {
+    await fetch(APPS_SCRIPT_URL + '?action=cheder_ensureSchema&token=' + AGENT_TOKEN +
+      '&instance=' + INSTANCE, { method: 'GET', mode: 'cors' });
+  } catch {}
+}
+
 async function syncRowToSheet(tab, row) {
   try {
     const url = APPS_SCRIPT_URL + '?action=cheder_appendRow&token=' + AGENT_TOKEN +
+      '&instance=' + INSTANCE +
       '&tab=' + encodeURIComponent(tab) + '&row=' + encodeURIComponent(JSON.stringify(row));
     const r = await fetch(url, { method: 'GET', mode: 'cors' });
     if (!r.ok) return false;
@@ -298,7 +479,7 @@ async function syncRowToSheet(tab, row) {
 async function syncUpdateRow(tab, row, matchKey, matchValue) {
   try {
     const params = new URLSearchParams({
-      action: 'cheder_updateRow', token: AGENT_TOKEN,
+      action: 'cheder_updateRow', token: AGENT_TOKEN, instance: INSTANCE,
       tab, row: JSON.stringify(row), matchKey, matchValue: String(matchValue),
     });
     const r = await fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'cors' });
@@ -311,7 +492,7 @@ async function syncUpdateRow(tab, row, matchKey, matchValue) {
 async function syncDeleteRow(tab, matchKey, matchValue) {
   try {
     const params = new URLSearchParams({
-      action: 'cheder_deleteRow', token: AGENT_TOKEN,
+      action: 'cheder_deleteRow', token: AGENT_TOKEN, instance: INSTANCE,
       tab, matchKey, matchValue: String(matchValue),
     });
     const r = await fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'cors' });
@@ -324,7 +505,7 @@ async function syncDeleteRow(tab, matchKey, matchValue) {
 async function pullFromSheet(tab) {
   try {
     const params = new URLSearchParams({
-      action: 'cheder_listRows', token: AGENT_TOKEN, tab,
+      action: 'cheder_listRows', token: AGENT_TOKEN, instance: INSTANCE, tab,
     });
     const r = await fetch(APPS_SCRIPT_URL + '?' + params.toString(), { method: 'GET', mode: 'cors' });
     if (!r.ok) return null;
@@ -346,27 +527,40 @@ async function pullAllFromSheet() {
     console.log('[sync] skipping pull — recent local change');
     return;
   }
-  const [students, behavior, users] = await Promise.all([
+  const [students, behavior, users, classes] = await Promise.all([
     pullFromSheet('תלמידים'),
     pullFromSheet('מעקב_התנהגות'),
     pullFromSheet('משתמשים'),
+    pullFromSheet('כיתות'),
   ]);
-  // Only overwrite if pull returned non-null (request succeeded)
-  if (students !== null) _data.students = students;
-  if (behavior !== null) _data.behavior = behavior;
+  // Don't overwrite local with empty if local has data (avoid silent wipe)
+  const safeReplace = (cur, fresh) => {
+    if (fresh === null) return cur;
+    if (Array.isArray(fresh) && fresh.length === 0 && Array.isArray(cur) && cur.length > 0) return cur;
+    return fresh;
+  };
+  _data.students = safeReplace(_data.students, students);
+  // Default status for any student that lost it
+  _data.students.forEach(s => { if (!s['סטטוס']) s['סטטוס'] = 'פעיל'; });
+  _data.behavior = safeReplace(_data.behavior, behavior);
   if (users !== null) {
-    _data.users = users.map(u => ({
-      username: u['שם משתמש'],
-      password_hash: u['סיסמה'],
-      role: u['תפקיד'],
-      permissions: u['הרשאות'],
-      visible_students: u['תלמידים_מורשים'] || 'all',
-      visible_categories: u['קטגוריות_מורשות'] || 'all',
-    }));
-    if (!_data.users.find(u => u.username === 'admin')) {
-      _data.users.unshift({username:'admin',password_hash:'6742',role:'מנהל',permissions:'all'});
+    // Only apply users with valid schema
+    const valid = users.filter(u => u['שם משתמש'] && u['סיסמה'] !== undefined && u['סיסמה'] !== '');
+    if (!(valid.length === 0 && _data.users.length > 0)) {
+      _data.users = valid.map(u => ({
+        username: u['שם משתמש'],
+        password_hash: String(u['סיסמה']),
+        role: u['תפקיד'],
+        permissions: u['הרשאות'],
+        visible_students: u['תלמידים_מורשים'] || 'all',
+        visible_categories: u['קטגוריות_מורשות'] || 'all',
+      }));
+      if (!_data.users.find(u => u.role === 'מנהל')) {
+        _data.users.unshift({username:'admin',password_hash:'6742',role:'מנהל',permissions:'all'});
+      }
     }
   }
+  _data.classes = safeReplace(_data.classes, classes);
   saveStored(_data);
   _online = true;
   updateSyncIndicator();

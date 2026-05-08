@@ -12,11 +12,28 @@ async function renderSettings() {
         <tbody id="users-tbody"></tbody>
       </table>
     </div>
+    <div class="card p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0"><i class="bi bi-mortarboard"></i> כיתות</h5>
+        <button class="btn btn-primary btn-sm" onclick="addClassModal()"><i class="bi bi-plus"></i> כיתה חדשה</button>
+      </div>
+      <table class="table table-hover mb-0">
+        <thead><tr><th style="width:50%">שם כיתה</th><th style="width:25%">סדר</th><th style="width:25%">פעולות</th></tr></thead>
+        <tbody id="classes-tbody"></tbody>
+      </table>
+    </div>
+    <div class="card p-3 mb-3">
+      <h5><i class="bi bi-arrow-up-circle"></i> שנת לימודים</h5>
+      <p class="text-muted small mb-2">מעבר לשנה הבאה: כל התלמידים הפעילים יועלו כיתה אחת. תלמידי הכיתה הגבוהה ביותר יסומנו כסיימו את המוסד.</p>
+      <button class="btn btn-warning" onclick="promoteAllConfirm()">
+        <i class="bi bi-arrow-up-square"></i> מעבר לשנה הבאה (כל התלמידים)
+      </button>
+    </div>
     <div class="card p-3">
       <h5>אודות המערכת</h5>
       <ul class="mb-2">
         <li>מערכת תלמוד תורה מעלה עמוס - גרסה 1.0</li>
-        <li>backend: Google Apps Script + Google Sheets</li>
+        <li>backend: Google Apps Script + Google Sheets (סנכרון אוטומטי)</li>
         <li>אחסון מקומי כגיבוי (localStorage)</li>
         <li>RTL עברית מלא</li>
       </ul>
@@ -24,6 +41,7 @@ async function renderSettings() {
         <i class="bi bi-table"></i> פתח את קובץ הנתונים בגוגל שיטס
       </a>
     </div>`;
+  renderClasses();
   const r = await api('listUsers', []);
   const users = r.data || [];
   const tbody = document.getElementById('users-tbody');
@@ -37,10 +55,13 @@ async function renderSettings() {
     const cls = role === 'מנהל' ? 'role-admin' : role === 'רב' ? 'role-rabbi' : 'role-readonly';
     const perms = (u['הרשאות']||'').split(',').map(p => p.trim()).filter(Boolean);
     const permBadges = perms.map(p => `<span class="cat-badge me-1">${PERM_LABELS[p]||p}</span>`).join(' ');
-    const isAdmin = u['שם משתמש'] === 'admin';
-    const actions = isAdmin ? '' :
+    const isAdmin = u['שם משתמש'] === 'admin' || u['תפקיד'] === 'מנהל';
+    const lastAdmin = users.filter(x => x['תפקיד'] === 'מנהל').length === 1 && isAdmin;
+    const deleteBtn = lastAdmin ? '' :
+      `<button class="btn btn-sm btn-outline-danger" onclick="deleteUser('${u['שם משתמש']}')"><i class="bi bi-trash"></i></button>`;
+    const actions =
       `<button class="btn btn-sm btn-outline-primary me-1" onclick="editUser('${u['שם משתמש']}')"><i class="bi bi-pencil"></i></button>
-       <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('${u['שם משתמש']}')"><i class="bi bi-trash"></i></button>`;
+       ${deleteBtn}`;
     return `<tr><td>${u['שם משתמש']||''}</td><td><span class="badge ${cls}">${role}</span></td><td>${permBadges}</td><td>${actions}</td></tr>`;
   }).join('');
 }
@@ -52,7 +73,8 @@ async function editUser(username) {
   addUserModal();
   setTimeout(() => {
     document.getElementById('nu-name').value = u.username;
-    document.getElementById('nu-name').readOnly = true;
+    document.getElementById('nu-name').readOnly = false;
+    document.getElementById('nu-name').dataset.originalUsername = u.username;
     document.getElementById('nu-pass').value = u.password_hash || '';
     document.getElementById('nu-role').value = u.role || 'מורה';
     document.getElementById('nu-role').dispatchEvent(new Event('change'));
@@ -90,8 +112,101 @@ async function editUser(username) {
 
 async function deleteUser(username) {
   if (!confirm('בטוח למחוק את ' + username + '?')) return;
-  await api('deleteUser', [username]);
+  const r = await api('deleteUser', [username]);
+  if (!r.ok) { alert(r.error || 'שגיאה'); return; }
   renderSettings();
+}
+
+async function renderClasses() {
+  const r = await api('listClasses', []);
+  const classes = r.data || [];
+  const tbody = document.getElementById('classes-tbody');
+  if (!tbody) return;
+  if (!classes.length) {
+    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3">אין כיתות מוגדרות</td></tr>';
+    return;
+  }
+  const data = getData();
+  tbody.innerHTML = classes.map(c => {
+    const count = data.students.filter(s => s['מחזור'] === c['שם'] && s['סטטוס'] !== 'סיים').length;
+    return `<tr>
+      <td><strong>${c['שם']||''}</strong> ${count > 0 ? `<span class="badge bg-secondary me-1">${count} תלמידים</span>` : ''}</td>
+      <td>${c['סדר']||''}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-primary me-1" onclick="editClassModal('${c['שם']}')"><i class="bi bi-pencil"></i></button>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteClass('${c['שם']}')"><i class="bi bi-trash"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function addClassModal(existing) {
+  const c = existing || { 'שם': '', 'סדר': '' };
+  const isEdit = !!existing;
+  const html = `<div class="modal fade" id="classModal"><div class="modal-dialog"><div class="modal-content">
+    <div class="modal-header"><h5><i class="bi bi-mortarboard"></i> ${isEdit ? 'עריכת כיתה: ' + c['שם'] : 'כיתה חדשה'}</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-body">
+      <div class="mb-3">
+        <label class="form-label">שם כיתה</label>
+        <input id="cls-name" class="form-control form-control-lg" value="${c['שם']||''}" placeholder="לדוגמה: א, שיעור א, כיתה ב">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">סדר (קובע את סדר העלייה השנתית)</label>
+        <input id="cls-order" type="number" class="form-control" value="${c['סדר']||''}" placeholder="1, 2, 3...">
+        <small class="text-muted">מספר נמוך יותר = כיתה נמוכה יותר. במעבר שנתי עוברים לסדר הבא.</small>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+      <button class="btn btn-primary" onclick="saveClass(${isEdit ? '1' : '0'},'${c['שם']||''}')"><i class="bi bi-check"></i> שמור</button>
+    </div>
+  </div></div></div>`;
+  const old = document.getElementById('classModal'); if (old) old.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+  new bootstrap.Modal(document.getElementById('classModal')).show();
+}
+
+async function editClassModal(name) {
+  const data = getData();
+  const c = data.classes.find(x => x['שם'] === name);
+  if (!c) return;
+  addClassModal(c);
+}
+
+async function saveClass(isEdit, originalName) {
+  const name = document.getElementById('cls-name').value.trim();
+  const order = parseInt(document.getElementById('cls-order').value) || 0;
+  if (!name) return alert('שם כיתה חובה');
+  if (!order) return alert('סדר חובה');
+  let r;
+  if (isEdit) {
+    r = await api('updateClass', [{'שם': name, 'סדר': order, 'שם קודם': originalName}]);
+  } else {
+    r = await api('addClass', [{'שם': name, 'סדר': order}]);
+  }
+  if (!r.ok) { alert(r.error || 'שגיאה'); return; }
+  bootstrap.Modal.getInstance(document.getElementById('classModal')).hide();
+  renderClasses();
+  if (typeof toast === 'function') toast(isEdit ? 'הכיתה עודכנה' : 'הכיתה נוספה', 'success');
+}
+
+async function deleteClass(name) {
+  if (!confirm('בטוח למחוק את כיתה ' + name + '?')) return;
+  const r = await api('deleteClass', [name]);
+  if (!r.ok) { alert(r.error || 'שגיאה'); return; }
+  renderClasses();
+  if (typeof toast === 'function') toast('הכיתה נמחקה', 'success');
+}
+
+async function promoteAllConfirm() {
+  const data = getData();
+  const active = data.students.filter(s => s['סטטוס'] !== 'סיים').length;
+  if (!confirm(`לבצע מעבר שנתי ל${active} תלמידים פעילים?\n\nכל התלמידים יועלו כיתה אחת.\nתלמידי הכיתה הגבוהה ביותר יסומנו כסיימו את המוסד.\n\nפעולה זו לא ניתנת לביטול בקלות.`)) return;
+  const r = await api('promoteAll', []);
+  if (!r.ok) { alert(r.error || 'שגיאה'); return; }
+  const d = r.data || {};
+  alert(`בוצע מעבר שנתי:\n${d.promoted} תלמידים הועלו כיתה\n${d.graduated} תלמידים סיימו את המוסד\n${d.skipped} דולגו (לא מסווגים או כבר סיימו)`);
+  if (typeof toast === 'function') toast('המעבר השנתי הושלם', 'success');
 }
 
 const PERMISSION_AREAS = [
@@ -125,7 +240,7 @@ function addUserModal() {
   const studentOpts = data.students.map(s => `
     <div class="form-check">
       <input class="form-check-input student-cb" type="checkbox" value="${s['מזהה']}" id="stu-${s['מזהה']}">
-      <label class="form-check-label" for="stu-${s['מזהה']}">${s['שם פרטי']||''} ${s['שם משפחה']||''} <small class="text-muted">(${s['כיתה']||''})</small></label>
+      <label class="form-check-label" for="stu-${s['מזהה']}">${s['שם פרטי']||''} ${s['שם משפחה']||''} <small class="text-muted">(${s['מחזור']||''})</small></label>
     </div>`).join('');
 
   const catOpts = data.categories.map(c => `
@@ -223,7 +338,7 @@ async function saveUser() {
     'שם משתמש': document.getElementById('nu-name').value.trim(),
     'סיסמה': document.getElementById('nu-pass').value.trim(),
     'תפקיד': document.getElementById('nu-role').value,
-    'הרשאות': checked.length === 4 ? 'all' : checked.join(','),
+    'הרשאות': checked.length === PERMISSION_AREAS.length ? 'all' : checked.join(','),
     'תלמידים_מורשים': visibleStudents,
     'קטגוריות_מורשות': visibleCats,
   };
@@ -231,14 +346,29 @@ async function saveUser() {
   if (!checked.length) return alert('יש לסמן לפחות מסך אחד');
   if (!allStudents && !visibleStudents) return alert('יש לבחור לפחות תלמיד אחד או לסמן "כל התלמידים"');
   const editMode = document.getElementById('addUModal').dataset.editMode === '1';
+  const originalUsername = document.getElementById('nu-name').dataset.originalUsername;
+  if (editMode && originalUsername) {
+    obj['שם משתמש קודם'] = originalUsername;
+  }
   const r = editMode ? await api('updateUser', [obj]) : await api('addUser', [obj]);
+  if (!r.ok) { alert(r.error || 'שגיאה'); return; }
   bootstrap.Modal.getInstance(document.getElementById('addUModal')).hide();
+  // Refresh in-memory currentUser if user edited themselves
+  const sess = JSON.parse(sessionStorage.getItem('user') || '{}');
+  if (typeof currentUser !== 'undefined' && currentUser && sess.username) {
+    currentUser.username = sess.username;
+    currentUser.role = sess.role;
+    currentUser.permissions = sess.permissions;
+    const ui = document.getElementById('user-info');
+    if (ui) ui.innerHTML = currentUser.username + ' (' + (currentUser.role||'') + ') <button class="btn btn-sm btn-outline-light ms-2" onclick="logout()">יציאה</button>';
+    if (typeof filterByPermissions === 'function') filterByPermissions();
+  }
   renderSettings();
 }
 
 async function renderReports() {
   const data = getData();
-  const cycles = [...new Set(data.students.map(s => s['כיתה']).filter(Boolean))];
+  const cycles = [...new Set(data.students.map(s => s['מחזור']).filter(Boolean))];
   const cats = data.categories.map(c => c.name);
   const sevs = ['גבוהה','בינונית','נמוכה'];
 
@@ -257,9 +387,9 @@ async function renderReports() {
           </select>
         </div>
         <div class="col-md-3">
-          <label class="form-label small">כיתה</label>
+          <label class="form-label small">מחזור</label>
           <select id="r-cycle" class="form-select form-select-sm">
-            <option value="">כל הכיתות</option>
+            <option value="">כל המחזורים</option>
             ${cycles.map(c => `<option value="${c}">${c}</option>`).join('')}
           </select>
         </div>
@@ -312,7 +442,7 @@ function applyReportFilters() {
 
   _filteredStudents = data.students.filter(s => {
     if (sId && String(s['מזהה']) !== sId) return false;
-    if (cycle && s['כיתה'] !== cycle) return false;
+    if (cycle && s['מחזור'] !== cycle) return false;
     return true;
   });
 
@@ -325,7 +455,7 @@ function applyReportFilters() {
     if (to && dt > new Date(to+'T23:59:59')) return false;
     if (cycle) {
       const stu = data.students.find(s => String(s['מזהה']) === String(e['תלמיד_מזהה']));
-      if (!stu || stu['כיתה'] !== cycle) return false;
+      if (!stu || stu['מחזור'] !== cycle) return false;
     }
     return true;
   });
@@ -349,10 +479,10 @@ function drawReportResults() {
     </div>`;
 
   if (_filteredStudents.length) {
-    html += '<div class="card p-3 mb-3"><h6><i class="bi bi-people"></i> תלמידים</h6><table class="table table-sm"><thead><tr><th>שם</th><th>כיתה</th><th>טלפון אם</th><th>אירועים</th></tr></thead><tbody>';
+    html += '<div class="card p-3 mb-3"><h6><i class="bi bi-people"></i> תלמידים</h6><table class="table table-sm"><thead><tr><th>שם</th><th>מחזור</th><th>טלפון אם</th><th>אירועים</th></tr></thead><tbody>';
     _filteredStudents.forEach(s => {
       const cnt = _filteredEvents.filter(e => String(e['תלמיד_מזהה']) === String(s['מזהה'])).length;
-      html += `<tr><td><strong>${s['שם פרטי']||''} ${s['שם משפחה']||''}</strong></td><td>${s['כיתה']||''}</td><td>${s['טלפון אם']||''}</td><td><span class="badge bg-secondary">${cnt}</span></td></tr>`;
+      html += `<tr><td><strong>${s['שם פרטי']||''} ${s['שם משפחה']||''}</strong></td><td>${s['מחזור']||''}</td><td>${s['טלפון אם']||''}</td><td><span class="badge bg-secondary">${cnt}</span></td></tr>`;
     });
     html += '</tbody></table></div>';
   }
@@ -386,9 +516,9 @@ function resetReportFilters() {
 function exportFilteredCSV() {
   let csv = '﻿';  // BOM for Excel Hebrew
   csv += 'תלמידים\n';
-  csv += 'מזהה,שם,גיל,כיתה,טלפון אם,טלפון אב\n';
+  csv += 'מזהה,שם,גיל,מחזור,טלפון אם,טלפון אב\n';
   _filteredStudents.forEach(s => {
-    csv += `${s['מזהה']||''},"${s['שם פרטי']||''} ${s['שם משפחה']||''}",${s['גיל']||''},${s['כיתה']||''},${s['טלפון אם']||''},${s['טלפון אב']||''}\n`;
+    csv += `${s['מזהה']||''},"${s['שם פרטי']||''} ${s['שם משפחה']||''}",${s['גיל']||''},${s['מחזור']||''},${s['טלפון אם']||''},${s['טלפון אב']||''}\n`;
   });
   csv += '\nאירועי התנהגות\n';
   csv += 'תאריך,תלמיד,קטגוריה,חומרה,תיאור\n';
@@ -419,9 +549,9 @@ td{padding:6px 8px;border:1px solid #e5e7eb}
 @media print{.print-btn{display:none}}
 </style></head><body>
 <button class="print-btn" onclick="window.print()" style="background:#0066cc;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;margin-bottom:20px">🖨 הדפס</button>
-<h1>דוח תלמוד תורה מעלה עמוס - ${today}</h1>
+<h1>דוח חדר מעלה עמוס - ${today}</h1>
 <p>תלמידים: ${_filteredStudents.length} · אירועים: ${_filteredEvents.length}</p>
-${_filteredStudents.length ? `<h2>תלמידים</h2><table><tr><th>שם</th><th>גיל</th><th>כיתה</th><th>טלפון</th></tr>${_filteredStudents.map(s=>`<tr><td>${s['שם פרטי']||''} ${s['שם משפחה']||''}</td><td>${s['גיל']||''}</td><td>${s['כיתה']||''}</td><td>${s['טלפון אם']||''}</td></tr>`).join('')}</table>` : ''}
+${_filteredStudents.length ? `<h2>תלמידים</h2><table><tr><th>שם</th><th>גיל</th><th>מחזור</th><th>טלפון</th></tr>${_filteredStudents.map(s=>`<tr><td>${s['שם פרטי']||''} ${s['שם משפחה']||''}</td><td>${s['גיל']||''}</td><td>${s['מחזור']||''}</td><td>${s['טלפון אם']||''}</td></tr>`).join('')}</table>` : ''}
 ${_filteredEvents.length ? `<h2>אירועי התנהגות</h2>${_filteredEvents.map(e=>{const c=e['חומרה']==='גבוהה'?'high':e['חומרה']==='נמוכה'?'low':'mid';return `<div class="event ${c}"><strong>${e['שם תלמיד']||''}</strong> · ${e['קטגוריה']||''} · ${new Date(e['תאריך']).toLocaleString('he-IL')}<br>${e['תיאור']||''}</div>`}).join('')}` : ''}
 <script>setTimeout(()=>window.print(), 500);</script>
 </body></html>`;
@@ -443,7 +573,7 @@ function generateReport(type) {
     title = 'מעקב התנהגות';
     content = renderBehaviorReport(data.behavior, data.students);
   } else {
-    title = 'דוח מלא - תלמוד תורה מעלה עמוס';
+    title = 'דוח מלא - חדר מעלה עמוס';
     content = renderStudentsReport(data.students) + '<div style="page-break-after:always"></div>' + renderBehaviorReport(data.behavior, data.students);
   }
 
@@ -475,7 +605,7 @@ tr:nth-child(even) td{background:#fafafa}
 <button class="print-btn" onclick="window.print()">🖨 הדפס/שמור PDF</button>
 <div class="header">
   <h1>${title}</h1>
-  <div class="subtitle">תלמוד תורה מעלה עמוס · הופק ב-${today} בשעה ${time}</div>
+  <div class="subtitle">חדר מעלה עמוס · הופק ב-${today} בשעה ${time}</div>
 </div>
 ${content}
 <script>setTimeout(()=>window.print(), 500);</script>
@@ -490,15 +620,15 @@ function renderStudentsReport(students) {
   if (!students.length) return '<div class="section"><p>אין תלמידים רשומים.</p></div>';
   const stats = `<div class="stats">
     <div class="stat"><div class="stat-num">${students.length}</div><div class="stat-label">תלמידים</div></div>
-    <div class="stat"><div class="stat-num">${new Set(students.map(s=>s['כיתה'])).size}</div><div class="stat-label">כיתות</div></div>
+    <div class="stat"><div class="stat-num">${new Set(students.map(s=>s['מחזור'])).size}</div><div class="stat-label">מחזורים</div></div>
   </div>`;
-  let table = '<table><thead><tr><th>מזהה</th><th>שם מלא</th><th>גיל</th><th>כיתה</th><th>שם אם</th><th>טלפון אם</th><th>שם אב</th><th>טלפון אב</th><th>כתובת</th></tr></thead><tbody>';
+  let table = '<table><thead><tr><th>מזהה</th><th>שם מלא</th><th>גיל</th><th>מחזור</th><th>שם אם</th><th>טלפון אם</th><th>שם אב</th><th>טלפון אב</th><th>כתובת</th></tr></thead><tbody>';
   students.forEach(s => {
     table += `<tr>
       <td>${s['מזהה']||''}</td>
       <td><strong>${s['שם פרטי']||''} ${s['שם משפחה']||''}</strong></td>
       <td>${s['גיל']||''}</td>
-      <td>${s['כיתה']||''}</td>
+      <td>${s['מחזור']||''}</td>
       <td>${s['שם אם']||''}</td>
       <td>${s['טלפון אם']||''}</td>
       <td>${s['שם אב']||''}</td>

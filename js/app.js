@@ -163,7 +163,7 @@ function filterByPermissions(){
   const permissions = {
     'students': ['students','all'],
     'behavior': ['behavior','all'],
-    'settings': ['all'],
+    'settings': ['settings','all'],
     'reports': ['reports','all'],
   };
   const tiles = document.querySelectorAll('.card-tile');

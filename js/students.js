@@ -1,11 +1,12 @@
 // Students page
 let _students = [];
+let _statusFilter = 'active';
 
 async function renderStudents() {
   const html = `
     <div class="mb-3"><button class="btn btn-link p-0" onclick="goto('home')"><i class="bi bi-arrow-right"></i> חזרה לתפריט</button></div>
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h3><i class="bi bi-people"></i> רשימת תלמידים</h3>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <h3 class="mb-0"><i class="bi bi-people"></i> רשימת תלמידים</h3>
       <div class="btn-group">
         <button class="btn btn-primary" onclick="addStudentModal()"><i class="bi bi-plus"></i> תלמיד חדש</button>
         <button class="btn btn-outline-success" onclick="importStudentsCSV()"><i class="bi bi-upload"></i> ייבוא CSV</button>
@@ -13,11 +14,20 @@ async function renderStudents() {
       </div>
     </div>
     <div class="card p-3">
-      <input id="s-search" class="form-control mb-3" placeholder="חיפוש תלמיד...">
+      <div class="row g-2 mb-3">
+        <div class="col-md-8"><input id="s-search" class="form-control" placeholder="חיפוש תלמיד..."></div>
+        <div class="col-md-4">
+          <select id="s-status" class="form-select">
+            <option value="active">פעילים</option>
+            <option value="graduated">סיימו</option>
+            <option value="all">הכל</option>
+          </select>
+        </div>
+      </div>
       <div class="table-responsive">
         <table class="table table-hover">
           <thead>
-            <tr><th>מזהה</th><th>שם מלא</th><th>גיל</th><th>כיתה</th><th>טלפון אם</th></tr>
+            <tr><th>מזהה</th><th>שם מלא</th><th>גיל</th><th>כיתה</th><th>טלפון אם</th><th>סטטוס</th><th>פעולות</th></tr>
           </thead>
           <tbody id="students-tbody"></tbody>
         </table>
@@ -28,14 +38,21 @@ async function renderStudents() {
 
   const r = await api('listStudents', []);
   _students = r.data || [];
-  drawStudents(_students);
+  applyStudentFilters();
 
-  document.getElementById('s-search').oninput = e => {
-    const q = e.target.value.toLowerCase();
-    if (!q) return drawStudents(_students);
-    drawStudents(_students.filter(s =>
-      Object.values(s).some(v => String(v).toLowerCase().includes(q))));
-  };
+  document.getElementById('s-search').oninput = applyStudentFilters;
+  document.getElementById('s-status').onchange = applyStudentFilters;
+  document.getElementById('s-status').value = _statusFilter;
+}
+
+function applyStudentFilters() {
+  const q = (document.getElementById('s-search')?.value || '').toLowerCase();
+  _statusFilter = document.getElementById('s-status')?.value || 'active';
+  let list = _students;
+  if (_statusFilter === 'active') list = list.filter(s => (s['סטטוס']||'פעיל') !== 'סיים');
+  else if (_statusFilter === 'graduated') list = list.filter(s => s['סטטוס'] === 'סיים');
+  if (q) list = list.filter(s => Object.values(s).some(v => String(v).toLowerCase().includes(q)));
+  drawStudents(list);
 }
 
 function drawStudents(list) {
@@ -49,19 +66,64 @@ function drawStudents(list) {
   tbody.innerHTML = list.map(s => {
     const fullName = (s['שם פרטי']||'') + ' ' + (s['שם משפחה']||'');
     const initials = fullName.trim().split(' ').map(w=>w[0]||'').join('').slice(0,2);
-    return `<tr style="cursor:pointer">
-      <td onclick="viewStudent(${s['מזהה']})">${s['מזהה']||''}</td>
-      <td onclick="viewStudent(${s['מזהה']})"><span class="avatar">${initials}</span>${fullName}</td>
-      <td onclick="viewStudent(${s['מזהה']})">${s['גיל']||''}</td>
-      <td onclick="viewStudent(${s['מזהה']})">${s['כיתה']||''}</td>
-      <td onclick="viewStudent(${s['מזהה']})">${s['טלפון אם']||''}</td>
+    const isGrad = s['סטטוס'] === 'סיים';
+    const statusBadge = isGrad
+      ? '<span class="badge bg-secondary">סיים</span>'
+      : '<span class="badge bg-success">פעיל</span>';
+    const promoteBtn = isGrad
+      ? `<button class="btn btn-sm btn-outline-success me-1" onclick="reactivateStudent(${s['מזהה']})" title="החזר למוסד"><i class="bi bi-arrow-counterclockwise"></i></button>`
+      : `<button class="btn btn-sm btn-outline-warning me-1" onclick="promoteStudent(${s['מזהה']})" title="העלה כיתה"><i class="bi bi-arrow-up"></i></button>
+         <button class="btn btn-sm btn-outline-secondary me-1" onclick="deactivateStudent(${s['מזהה']})" title="הוצא מהמוסד"><i class="bi bi-box-arrow-right"></i></button>`;
+    const grayed = isGrad ? 'style="opacity:.65"' : '';
+    return `<tr ${grayed}>
+      <td onclick="viewStudent(${s['מזהה']})" style="cursor:pointer">${s['מזהה']||''}</td>
+      <td onclick="viewStudent(${s['מזהה']})" style="cursor:pointer"><span class="avatar">${initials}</span>${fullName}</td>
+      <td onclick="viewStudent(${s['מזהה']})" style="cursor:pointer">${s['גיל']||''}</td>
+      <td onclick="viewStudent(${s['מזהה']})" style="cursor:pointer">${s['מחזור']||''}</td>
+      <td onclick="viewStudent(${s['מזהה']})" style="cursor:pointer">${s['טלפון אם']||''}</td>
+      <td>${statusBadge}</td>
       <td>
         <button class="btn btn-sm btn-outline-info me-1" onclick="viewStudent(${s['מזהה']})" title="צפייה"><i class="bi bi-eye"></i></button>
         <button class="btn btn-sm btn-outline-primary me-1" onclick="editStudent(${s['מזהה']})" title="עריכה"><i class="bi bi-pencil"></i></button>
+        ${promoteBtn}
         <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent(${s['מזהה']})" title="מחיקה"><i class="bi bi-trash"></i></button>
       </td>
     </tr>`;
   }).join('');
+}
+
+async function promoteStudent(id) {
+  const data = getData();
+  const stu = data.students.find(s => String(s['מזהה']) === String(id));
+  if (!stu) return;
+  if (!confirm(`להעלות את ${stu['שם פרטי']||''} ${stu['שם משפחה']||''} כיתה?`)) return;
+  const r = await api('promoteStudent', [id]);
+  if (!r.ok) { alert(r.error || 'שגיאה'); return; }
+  const newClass = r.data.newClass;
+  const status = r.data.status;
+  if (typeof toast === 'function') toast(status === 'סיים' ? 'התלמיד סיים את המוסד' : `הועלה לכיתה ${newClass}`, 'success');
+  renderStudents();
+  loadStats();
+}
+
+async function deactivateStudent(id) {
+  const data = getData();
+  const stu = data.students.find(s => String(s['מזהה']) === String(id));
+  if (!stu) return;
+  if (!confirm(`להוציא את ${stu['שם פרטי']||''} ${stu['שם משפחה']||''} מהמוסד?\n(התלמיד לא יימחק, רק יסומן כסיים)`)) return;
+  const r = await api('deactivateStudent', [id]);
+  if (!r.ok) { alert(r.error || 'שגיאה'); return; }
+  if (typeof toast === 'function') toast('התלמיד הוצא מהמוסד', 'success');
+  renderStudents();
+  loadStats();
+}
+
+async function reactivateStudent(id) {
+  const r = await api('reactivateStudent', [id]);
+  if (!r.ok) { alert(r.error || 'שגיאה'); return; }
+  if (typeof toast === 'function') toast('התלמיד הוחזר למוסד', 'success');
+  renderStudents();
+  loadStats();
 }
 
 async function viewStudent(id) {
@@ -85,7 +147,7 @@ async function viewStudent(id) {
     <div class="modal-body">
       <div class="row g-2 mb-3">
         <div class="col-md-3"><div class="card p-2 text-center"><strong>${s['גיל']||'-'}</strong><div class="small text-muted">גיל</div></div></div>
-        <div class="col-md-3"><div class="card p-2 text-center"><strong>${s['כיתה']||'-'}</strong><div class="small text-muted">כיתה</div></div></div>
+        <div class="col-md-3"><div class="card p-2 text-center"><strong>${s['מחזור']||'-'}</strong><div class="small text-muted">מחזור</div></div></div>
         <div class="col-md-3"><div class="card p-2 text-center"><strong>${events.length}</strong><div class="small text-muted">אירועים</div></div></div>
         <div class="col-md-3"><div class="card p-2 text-center"><strong>${events.filter(e=>e['חומרה']==='גבוהה').length}</strong><div class="small text-muted">חומרה גבוהה</div></div></div>
       </div>
@@ -115,20 +177,22 @@ function editStudent(id) {
   const s = _students.find(x => String(x['מזהה']) === String(id));
   if (!s) return;
   addStudentModal();
-  setTimeout(() => {
+  const modalEl = document.getElementById('addStudentModal');
+  const populate = () => {
     document.getElementById('ns-fname').value = s['שם פרטי']||'';
     document.getElementById('ns-lname').value = s['שם משפחה']||'';
     document.getElementById('ns-age').value = s['גיל']||'';
-    document.getElementById('ns-cycle').value = s['כיתה']||'';
+    document.getElementById('ns-cycle').value = s['מחזור']||'';
     document.getElementById('ns-mname').value = s['שם אם']||'';
     document.getElementById('ns-mphone').value = s['טלפון אם']||'';
     document.getElementById('ns-fname2').value = s['שם אב']||'';
     document.getElementById('ns-fphone').value = s['טלפון אב']||'';
     document.getElementById('ns-addr').value = s['כתובת']||'';
-    // Mark as edit mode
-    document.getElementById('addStudentModal').dataset.editId = id;
-    document.querySelector('#addStudentModal .modal-title').textContent = 'עריכת תלמיד';
-  }, 100);
+    modalEl.dataset.editId = id;
+    const headerH5 = modalEl.querySelector('.modal-header h5');
+    if (headerH5) headerH5.innerHTML = '<i class="bi bi-pencil"></i> עריכת תלמיד';
+  };
+  modalEl.addEventListener('shown.bs.modal', populate, { once: true });
 }
 
 async function deleteStudent(id) {
@@ -145,11 +209,11 @@ async function emailParentSummary(id) {
     .filter(e => String(e['תלמיד_מזהה']) === String(id))
     .sort((a,b) => new Date(b['תאריך']) - new Date(a['תאריך']));
   const fullName = (s['שם פרטי']||'') + ' ' + (s['שם משפחה']||'');
-  const motherEmail = prompt('מייל ההורה:', s['טלפון אם'] || '');
+  const motherEmail = prompt('מייל ההורה:', s['אימייל אם'] || s['מייל אם'] || '');
   if (!motherEmail) return;
   const subject = `סיכום התנהגות — ${fullName}`;
   const lines = [`שלום,`, ``, `הנה סיכום עדכני של ${fullName}:`, ``];
-  lines.push(`גיל: ${s['גיל']||'-'} | כיתה: ${s['כיתה']||'-'}`);
+  lines.push(`גיל: ${s['גיל']||'-'} | מחזור: ${s['מחזור']||'-'}`);
   lines.push(`סך כל אירועים: ${events.length} | חומרה גבוהה: ${events.filter(e=>e['חומרה']==='גבוהה').length}`);
   lines.push(``);
   if (events.length) {
@@ -167,9 +231,9 @@ async function emailParentSummary(id) {
 
 function exportStudentsCSV() {
   let csv = '﻿';  // BOM
-  csv += 'מזהה,שם פרטי,שם משפחה,גיל,כיתה,שם אם,טלפון אם,שם אב,טלפון אב,כתובת,הערות\n';
+  csv += 'מזהה,שם פרטי,שם משפחה,גיל,מחזור,שם אם,טלפון אם,שם אב,טלפון אב,כתובת,הערות\n';
   _students.forEach(s => {
-    const fields = ['מזהה','שם פרטי','שם משפחה','גיל','כיתה','שם אם','טלפון אם','שם אב','טלפון אב','כתובת','הערות'];
+    const fields = ['מזהה','שם פרטי','שם משפחה','גיל','מחזור','שם אם','טלפון אם','שם אב','טלפון אב','כתובת','הערות'];
     csv += fields.map(f => `"${(s[f]||'').toString().replace(/"/g,'""')}"`).join(',') + '\n';
   });
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
@@ -256,7 +320,7 @@ td{padding:5pt;border:1px solid #e5e7eb}
 <h1>${fullName}</h1>
 <p>בית התלמוד · בית שמש · ${today}</p>
 <table>
-<tr><th>גיל</th><td>${s['גיל']||'-'}</td><th>כיתה</th><td>${s['כיתה']||'-'}</td></tr>
+<tr><th>גיל</th><td>${s['גיל']||'-'}</td><th>מחזור</th><td>${s['מחזור']||'-'}</td></tr>
 <tr><th>שם אם</th><td>${s['שם אם']||'-'}</td><th>טלפון אם</th><td>${s['טלפון אם']||'-'}</td></tr>
 <tr><th>שם אב</th><td>${s['שם אב']||'-'}</td><th>טלפון אב</th><td>${s['טלפון אב']||'-'}</td></tr>
 <tr><th>כתובת</th><td colspan="3">${s['כתובת']||'-'}</td></tr>
@@ -274,17 +338,25 @@ ${events.map(e => {
 }
 
 function addStudentModal() {
+  const data = getData();
+  const classOpts = (data.classes||[]).sort((a,b)=>parseInt(a['סדר'])-parseInt(b['סדר']))
+    .map(c => `<option value="${c['שם']}">${c['שם']}</option>`).join('');
   const html = `
     <div class="modal fade" id="addStudentModal" tabindex="-1">
       <div class="modal-dialog">
         <div class="modal-content">
-          <div class="modal-header"><h5>תלמיד חדש</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-header"><h5><i class="bi bi-person-plus"></i> תלמיד חדש</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
           <div class="modal-body">
             <div class="row g-2">
               <div class="col-6"><label class="form-label small">שם פרטי</label><input id="ns-fname" class="form-control"></div>
               <div class="col-6"><label class="form-label small">שם משפחה</label><input id="ns-lname" class="form-control"></div>
               <div class="col-4"><label class="form-label small">גיל</label><input id="ns-age" type="number" class="form-control"></div>
-              <div class="col-8"><label class="form-label small">כיתה</label><input id="ns-cycle" class="form-control"></div>
+              <div class="col-8"><label class="form-label small">כיתה</label>
+                <select id="ns-cycle" class="form-select">
+                  <option value="">— בחר כיתה —</option>
+                  ${classOpts}
+                </select>
+              </div>
               <div class="col-6"><label class="form-label small">שם אם</label><input id="ns-mname" class="form-control"></div>
               <div class="col-6"><label class="form-label small">טלפון אם</label><input id="ns-mphone" class="form-control"></div>
               <div class="col-6"><label class="form-label small">שם אב</label><input id="ns-fname2" class="form-control"></div>
@@ -294,7 +366,7 @@ function addStudentModal() {
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
-            <button class="btn btn-primary" onclick="saveStudent()">שמור</button>
+            <button class="btn btn-primary" onclick="saveStudent()"><i class="bi bi-check"></i> שמור</button>
           </div>
         </div>
       </div>
@@ -310,7 +382,7 @@ async function saveStudent() {
     'שם פרטי': document.getElementById('ns-fname').value,
     'שם משפחה': document.getElementById('ns-lname').value,
     'גיל': document.getElementById('ns-age').value,
-    'כיתה': document.getElementById('ns-cycle').value,
+    'מחזור': document.getElementById('ns-cycle').value,
     'שם אם': document.getElementById('ns-mname').value,
     'טלפון אם': document.getElementById('ns-mphone').value,
     'שם אב': document.getElementById('ns-fname2').value,
