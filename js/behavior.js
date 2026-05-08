@@ -30,11 +30,12 @@ async function renderBehavior() {
 function fillFilters() {
   const stSel = document.getElementById('b-fstudent');
   _allStudents.forEach(s => {
-    stSel.innerHTML += `<option value="${s['מזהה']}">${s['שם פרטי']||''} ${s['שם משפחה']||''}</option>`;
+    const fn = (s['שם פרטי']||'') + ' ' + (s['שם משפחה']||'');
+    stSel.innerHTML += `<option value="${escHtml(s['מזהה'])}">${escHtml(fn)}</option>`;
   });
   const catSel = document.getElementById('b-fcat');
   _categories.forEach(c => {
-    catSel.innerHTML += `<option value="${c['קטגוריה']}">${c['קטגוריה']}</option>`;
+    catSel.innerHTML += `<option value="${escHtml(c['קטגוריה'])}">${escHtml(c['קטגוריה'])}</option>`;
   });
 }
 
@@ -58,14 +59,14 @@ function drawEvents(list) {
     const date = e['תאריך'] ? new Date(e['תאריך']).toLocaleString('he-IL') : '';
     return `<div class="card p-3 mb-2 ${sev}">
       <div class="d-flex justify-content-between">
-        <div><span class="cat-badge">${e['קטגוריה']||''}</span><strong class="mx-2">${e['שם תלמיד']||''}</strong></div>
+        <div><span class="cat-badge">${escHtml(e['קטגוריה']||'')}</span><strong class="mx-2">${escHtml(e['שם תלמיד']||'')}</strong></div>
         <div class="d-flex align-items-center gap-2">
-          <small class="text-muted">${date}</small>
+          <small class="text-muted">${escHtml(date)}</small>
           <button class="btn btn-sm btn-outline-primary" onclick="editEvent(${e['מזהה']||0})"><i class="bi bi-pencil"></i></button>
           <button class="btn btn-sm btn-outline-danger" onclick="deleteEvent(${e['מזהה']||0})"><i class="bi bi-trash"></i></button>
         </div>
       </div>
-      <p class="mb-0 mt-2">${e['תיאור']||''}</p>
+      <p class="mb-0 mt-2">${escHtml(e['תיאור']||'')}</p>
     </div>`;
   }).join('');
 }
@@ -74,14 +75,17 @@ function editEvent(id) {
   const e = _events.find(x => String(x['מזהה']) === String(id));
   if (!e) return;
   addEventModal();
-  setTimeout(() => {
+  const modalEl = document.getElementById('addEvModal');
+  const populate = () => {
     document.getElementById('ne-student').value = e['תלמיד_מזהה'] || '';
     document.getElementById('ne-cat').value = e['קטגוריה'] || '';
     document.getElementById('ne-desc').value = e['תיאור'] || '';
     document.getElementById('ne-sev').value = e['חומרה'] || 'בינונית';
-    document.getElementById('addEvModal').dataset.editId = id;
-    document.querySelector('#addEvModal h5').textContent = 'עריכת אירוע';
-  }, 100);
+    modalEl.dataset.editId = id;
+    const h5 = modalEl.querySelector('h5');
+    if (h5) h5.textContent = 'עריכת אירוע';
+  };
+  modalEl.addEventListener('shown.bs.modal', populate, { once: true });
 }
 
 async function deleteEvent(id) {
@@ -95,8 +99,8 @@ function addEventModal() {
   const html = `<div class="modal fade" id="addEvModal"><div class="modal-dialog"><div class="modal-content">
     <div class="modal-header"><h5>אירוע חדש</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
-      <div class="mb-3"><label class="form-label">תלמיד</label><select id="ne-student" class="form-select"><option value="">בחר</option>${_allStudents.map(s=>`<option value="${s['מזהה']}">${s['שם פרטי']} ${s['שם משפחה']||''}</option>`).join('')}</select></div>
-      <div class="mb-3"><label class="form-label">קטגוריה</label><select id="ne-cat" class="form-select"><option value="">בחר</option>${_categories.map(c=>`<option value="${c['קטגוריה']}">${c['קטגוריה']}</option>`).join('')}</select></div>
+      <div class="mb-3"><label class="form-label">תלמיד</label><select id="ne-student" class="form-select"><option value="">בחר</option>${_allStudents.map(s=>`<option value="${escHtml(s['מזהה'])}">${escHtml((s['שם פרטי']||'') + ' ' + (s['שם משפחה']||''))}</option>`).join('')}</select></div>
+      <div class="mb-3"><label class="form-label">קטגוריה</label><select id="ne-cat" class="form-select"><option value="">בחר</option>${_categories.map(c=>`<option value="${escHtml(c['קטגוריה'])}">${escHtml(c['קטגוריה'])}</option>`).join('')}</select></div>
       <div class="mb-3"><label class="form-label">תיאור</label><textarea id="ne-desc" class="form-control" rows="3"></textarea></div>
       <div class="mb-3"><label class="form-label">חומרה</label><select id="ne-sev" class="form-select"><option>נמוכה</option><option selected>בינונית</option><option>גבוהה</option></select></div>
     </div>

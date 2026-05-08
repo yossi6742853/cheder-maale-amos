@@ -136,26 +136,26 @@ async function viewStudent(id) {
     const sev = e['חומרה'] === 'גבוהה' ? 'severity-high' : e['חומרה'] === 'נמוכה' ? 'severity-low' : 'severity-mid';
     const dt = e['תאריך'] ? new Date(e['תאריך']).toLocaleDateString('he-IL') : '';
     return `<div class="card p-2 mb-2 ${sev}">
-      <div class="d-flex justify-content-between"><span class="cat-badge">${e['קטגוריה']||''}</span><small class="text-muted">${dt}</small></div>
-      <p class="mb-0 mt-1 small">${e['תיאור']||''}</p>
+      <div class="d-flex justify-content-between"><span class="cat-badge">${escHtml(e['קטגוריה']||'')}</span><small class="text-muted">${escHtml(dt)}</small></div>
+      <p class="mb-0 mt-1 small">${escHtml(e['תיאור']||'')}</p>
     </div>`;
   }).join('') : '<p class="text-muted">אין אירועים מתועדים</p>';
 
   const html = `<div class="modal fade" id="viewStuModal"><div class="modal-dialog modal-lg"><div class="modal-content">
-    <div class="modal-header"><h5><i class="bi bi-person"></i> ${fullName}</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-header"><h5><i class="bi bi-person"></i> ${escHtml(fullName)}</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
       <div class="row g-2 mb-3">
-        <div class="col-md-3"><div class="card p-2 text-center"><strong>${s['גיל']||'-'}</strong><div class="small text-muted">גיל</div></div></div>
-        <div class="col-md-3"><div class="card p-2 text-center"><strong>${s['מחזור']||'-'}</strong><div class="small text-muted">מחזור</div></div></div>
+        <div class="col-md-3"><div class="card p-2 text-center"><strong>${escHtml(s['גיל']||'-')}</strong><div class="small text-muted">גיל</div></div></div>
+        <div class="col-md-3"><div class="card p-2 text-center"><strong>${escHtml(s['מחזור']||'-')}</strong><div class="small text-muted">כיתה</div></div></div>
         <div class="col-md-3"><div class="card p-2 text-center"><strong>${events.length}</strong><div class="small text-muted">אירועים</div></div></div>
         <div class="col-md-3"><div class="card p-2 text-center"><strong>${events.filter(e=>e['חומרה']==='גבוהה').length}</strong><div class="small text-muted">חומרה גבוהה</div></div></div>
       </div>
       <h6>פרטים אישיים</h6>
       <table class="table table-sm">
-        <tr><td><strong>שם אם</strong></td><td>${s['שם אם']||'-'}</td><td><strong>טלפון אם</strong></td><td>${s['טלפון אם']||'-'}</td></tr>
-        <tr><td><strong>שם אב</strong></td><td>${s['שם אב']||'-'}</td><td><strong>טלפון אב</strong></td><td>${s['טלפון אב']||'-'}</td></tr>
-        <tr><td><strong>כתובת</strong></td><td colspan="3">${s['כתובת']||'-'}</td></tr>
-        ${s['הערות'] ? `<tr><td><strong>הערות</strong></td><td colspan="3">${s['הערות']}</td></tr>` : ''}
+        <tr><td><strong>שם אם</strong></td><td>${escHtml(s['שם אם']||'-')}</td><td><strong>טלפון אם</strong></td><td>${escHtml(s['טלפון אם']||'-')}</td></tr>
+        <tr><td><strong>שם אב</strong></td><td>${escHtml(s['שם אב']||'-')}</td><td><strong>טלפון אב</strong></td><td>${escHtml(s['טלפון אב']||'-')}</td></tr>
+        <tr><td><strong>כתובת</strong></td><td colspan="3">${escHtml(s['כתובת']||'-')}</td></tr>
+        ${s['הערות'] ? `<tr><td><strong>הערות</strong></td><td colspan="3">${escHtml(s['הערות'])}</td></tr>` : ''}
       </table>
       <h6 class="mt-3">היסטוריית התנהגות (${events.length})</h6>
       ${eventsHtml}
@@ -304,7 +304,7 @@ function printStudentReport(id) {
       .sort((a,b) => new Date(b['תאריך']) - new Date(a['תאריך']));
     const fullName = (s['שם פרטי']||'') + ' ' + (s['שם משפחה']||'');
     const today = new Date().toLocaleDateString('he-IL');
-    const html = `<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="utf-8"><title>${fullName}</title>
+    const html = `<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="utf-8"><title>${escHtml(fullName)}</title>
 <style>
 @page{size:A4;margin:1.5cm}body{font-family:Arial,sans-serif;direction:rtl;color:#1f2937}
 h1{color:#0066cc;border-bottom:3px solid #0066cc;padding-bottom:8pt}
@@ -316,18 +316,18 @@ td{padding:5pt;border:1px solid #e5e7eb}
 @media print{.no-print{display:none}}
 </style></head><body>
 <button class="no-print" onclick="window.print()" style="background:#0066cc;color:#fff;border:none;padding:10pt 20pt;border-radius:6px;cursor:pointer">🖨 הדפס</button>
-<h1>${fullName}</h1>
-<p>תלמוד תורה מעלה עמוס · ${today}</p>
+<h1>${escHtml(fullName)}</h1>
+<p>תלמוד תורה מעלה עמוס · ${escHtml(today)}</p>
 <table>
-<tr><th>גיל</th><td>${s['גיל']||'-'}</td><th>מחזור</th><td>${s['מחזור']||'-'}</td></tr>
-<tr><th>שם אם</th><td>${s['שם אם']||'-'}</td><th>טלפון אם</th><td>${s['טלפון אם']||'-'}</td></tr>
-<tr><th>שם אב</th><td>${s['שם אב']||'-'}</td><th>טלפון אב</th><td>${s['טלפון אב']||'-'}</td></tr>
-<tr><th>כתובת</th><td colspan="3">${s['כתובת']||'-'}</td></tr>
+<tr><th>גיל</th><td>${escHtml(s['גיל']||'-')}</td><th>כיתה</th><td>${escHtml(s['מחזור']||'-')}</td></tr>
+<tr><th>שם אם</th><td>${escHtml(s['שם אם']||'-')}</td><th>טלפון אם</th><td>${escHtml(s['טלפון אם']||'-')}</td></tr>
+<tr><th>שם אב</th><td>${escHtml(s['שם אב']||'-')}</td><th>טלפון אב</th><td>${escHtml(s['טלפון אב']||'-')}</td></tr>
+<tr><th>כתובת</th><td colspan="3">${escHtml(s['כתובת']||'-')}</td></tr>
 </table>
 <h2>היסטוריית התנהגות (${events.length})</h2>
 ${events.map(e => {
   const c = e['חומרה']==='גבוהה'?'high':e['חומרה']==='נמוכה'?'low':'mid';
-  return `<div class="event ${c}"><strong>${e['קטגוריה']||''}</strong> · ${new Date(e['תאריך']).toLocaleString('he-IL')} · חומרה ${e['חומרה']||''}<br>${e['תיאור']||''}</div>`;
+  return `<div class="event ${c}"><strong>${escHtml(e['קטגוריה']||'')}</strong> · ${escHtml(new Date(e['תאריך']).toLocaleString('he-IL'))} · חומרה ${escHtml(e['חומרה']||'')}<br>${escHtml(e['תיאור']||'')}</div>`;
 }).join('')}
 <script>setTimeout(()=>window.print(), 500);</script>
 </body></html>`;

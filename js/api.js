@@ -171,25 +171,31 @@ async function api(fn, args) {
       const oldName = obj['שם קודם'] || obj['שם'];
       const idx = _data.classes.findIndex(c => c['שם'] === oldName);
       if (idx < 0) return { ok: false, error: 'not found' };
-      const cleanObj = { 'שם': obj['שם'], 'סדר': obj['סדר'] };
+      const cleanObj = { 'שם': obj['שם'], 'סדר': parseInt(obj['סדר']) || _data.classes[idx]['סדר'] };
+      if (_data.classes.some((c, i) => i !== idx && parseInt(c['סדר']) === cleanObj['סדר']))
+        return { ok: false, error: 'סדר ' + cleanObj['סדר'] + ' כבר תפוס' };
+      if (_data.classes.some((c, i) => i !== idx && c['שם'] === cleanObj['שם']))
+        return { ok: false, error: 'שם הכיתה כבר קיים' };
       _data.classes[idx] = cleanObj;
-      // If renamed, update all students with old class name
-      if (oldName !== cleanObj['שם']) {
-        _data.students.forEach(s => {
-          if (s['מחזור'] === oldName) {
-            s['מחזור'] = cleanObj['שם'];
-            syncUpdateRow('תלמידים', s, 'מזהה', s['מזהה']);
-          }
-        });
-      }
+      const renamed = oldName !== cleanObj['שם'];
+      const affectedStudents = renamed
+        ? _data.students.filter(s => s['מחזור'] === oldName)
+        : [];
+      affectedStudents.forEach(s => { s['מחזור'] = cleanObj['שם']; });
       saveStored(_data);
       markLocalChange();
-      if (oldName !== cleanObj['שם']) {
-        syncDeleteRow('כיתות', 'שם', oldName).then(() =>
-          syncRowToSheet('כיתות', cleanObj).then(updateSyncIndicator));
-      } else {
-        syncUpdateRow('כיתות', cleanObj, 'שם', oldName).then(updateSyncIndicator);
-      }
+      (async () => {
+        for (const s of affectedStudents) {
+          await syncUpdateRow('תלמידים', s, 'מזהה', s['מזהה']);
+        }
+        if (renamed) {
+          const ok = await syncDeleteRow('כיתות', 'שם', oldName);
+          if (ok !== false) await syncRowToSheet('כיתות', cleanObj);
+        } else {
+          await syncUpdateRow('כיתות', cleanObj, 'שם', oldName);
+        }
+        updateSyncIndicator();
+      })();
       return { ok: true };
     }
     case 'deleteClass': {
@@ -355,10 +361,10 @@ async function api(fn, args) {
       const updated = {
         username: newUsername,
         password_hash: obj['סיסמה'] || obj.password_hash || _data.users[idx].password_hash,
-        role: obj['תפקיד'] || obj.role,
-        permissions: obj['הרשאות'] || obj.permissions,
-        visible_students: obj['תלמידים_מורשים'] || obj.visible_students || 'all',
-        visible_categories: obj['קטגוריות_מורשות'] || obj.visible_categories || 'all',
+        role: obj['תפקיד'] ?? obj.role ?? _data.users[idx].role,
+        permissions: obj['הרשאות'] ?? obj.permissions ?? _data.users[idx].permissions ?? '',
+        visible_students: obj['תלמידים_מורשים'] ?? obj.visible_students ?? 'all',
+        visible_categories: obj['קטגוריות_מורשות'] ?? obj.visible_categories ?? 'all',
       };
       _data.users[idx] = updated;
       saveStored(_data);
@@ -581,7 +587,21 @@ async function pullAllFromSheet() {
   }
   _data.classes = safeReplace(_data.classes, classes);
   saveStored(_data);
-  _online = true;
+  const allFailed = students === null && behavior === null && users === null && classes === null;
+  _online = !allFailed;
+  try {
+    const sess = JSON.parse(sessionStorage.getItem('user') || '{}');
+    if (sess.username && typeof currentUser !== 'undefined' && currentUser) {
+      const fresh = _data.users.find(u => u.username === sess.username);
+      if (fresh) {
+        const changed = currentUser.role !== fresh.role || currentUser.permissions !== fresh.permissions;
+        currentUser.role = fresh.role;
+        currentUser.permissions = fresh.permissions;
+        sessionStorage.setItem('user', JSON.stringify({username: fresh.username, role: fresh.role, permissions: fresh.permissions}));
+        if (changed && typeof filterByPermissions === 'function') filterByPermissions();
+      }
+    }
+  } catch {}
   updateSyncIndicator();
 }
 
