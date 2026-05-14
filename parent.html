@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>פורטל הורים — בית התלמוד</title>
+<link rel="icon" type="image/png" href="img/logo.png">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+<style>body{background:#f9fafb;font-family:Heebo,Arial,sans-serif}</style>
+</head>
+<body>
+<nav class="navbar navbar-dark mb-4" style="background:#0066cc">
+  <div class="container">
+    <span class="navbar-brand">
+      <img src="img/logo.png" alt="לוגו" class="brand-logo">
+      <span class="brand-text">בית התלמוד · פורטל הורים</span>
+    </span>
+  </div>
+</nav>
+<div class="container">
+  <div id="content"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzhRqTLE4fjjDqrH1we-JlGZ15R-ws8b_gfWF1xF1ewailaiyiS_YXqUhRtb3cQghVt/exec';
+const AGENT_TOKEN = 'BHT_AGENT_2026';
+
+async function fetchTab(tab) {
+  try {
+    const url = `${APPS_SCRIPT_URL}?action=cheder_listRows&token=${AGENT_TOKEN}&instance=bht&tab=${encodeURIComponent(tab)}`;
+    const r = await fetch(url);
+    const d = await r.json();
+    return d.ok ? d.rows : [];
+  } catch { return []; }
+}
+
+async function init() {
+  const params = new URLSearchParams(location.search);
+  const sid = params.get('s');
+  const token = params.get('t');
+  const mid = params.get('m');  // optional: focus a specific meeting
+  if (!sid || !token) {
+    document.getElementById('content').innerHTML = '<div class="alert alert-warning">קישור לא תקין. פנה למזכירות בית התלמוד.</div>';
+    return;
+  }
+  const expectedToken = await computeToken(sid);
+  if (token !== expectedToken) {
+    document.getElementById('content').innerHTML = '<div class="alert alert-danger">קישור לא תקין או פג תוקף.</div>';
+    return;
+  }
+
+  document.getElementById('content').innerHTML = '<div class="text-center py-5"><div class="spinner-border"></div><p class="mt-2">טוען נתונים...</p></div>';
+  const [stRows, behRows, fRows, tRows, mRows] = await Promise.all([
+    fetchTab('תלמידים'),
+    fetchTab('מעקב_התנהגות'),
+    fetchTab('תפקוד'),
+    fetchTab('מבחנים'),
+    fetchTab('אסיפות'),
+  ]);
+  const student = stRows.find(s => String(s['מזהה']) === String(sid));
+  if (!student) {
+    document.getElementById('content').innerHTML = '<div class="alert alert-warning">תלמיד לא נמצא.</div>';
+    return;
+  }
+  // If ?m=<id> — focus that specific meeting at the top
+  const focusedMeeting = mid ? mRows.find(m => String(m['מזהה']) === String(mid) && String(m['תלמיד_מזהה']) === String(sid)) : null;
+  const allMeetings = mRows.filter(m => String(m['תלמיד_מזהה']) === String(sid))
+    .sort((a,b) => new Date(b['תאריך']||0) - new Date(a['תאריך']||0));
+  const events = behRows.filter(e => String(e['תלמיד_מזהה']) === String(sid))
+    .sort((a,b) => new Date(b['תאריך']) - new Date(a['תאריך']));
+  const funcs = fRows.filter(f => String(f['תלמיד_מזהה']) === String(sid));
+  const tests = tRows.filter(t => String(t['תלמיד_מזהה']) === String(sid));
+
+  const fullName = (student['שם פרטי']||'') + ' ' + (student['שם משפחה']||'');
+  const fAvg = funcs.length ? (funcs.reduce((a,b) => a + (parseFloat(b['ציון'])||0), 0) / funcs.length).toFixed(2) : '-';
+  const tAvg = tests.length ? (tests.reduce((a,b) => a + (parseFloat(b['ציון'])||0), 0) / tests.length).toFixed(1) : '-';
+
+  let html = `
+    <div class="card p-4 mb-3 text-center" style="background:linear-gradient(135deg,#0066cc 0%,#1e40af 100%);color:white">
+      <h2 class="mb-1">${escHtml(fullName)}</h2>
+      <p class="mb-0">כיתה ${escHtml(student['מחזור']||'-')} · גיל ${escHtml(student['גיל']||'-')}</p>
+    </div>
+    <div class="row g-3 mb-3">
+      <div class="col-md-4"><div class="card p-3 text-center"><div class="display-6 text-primary">${events.length}</div><div class="small text-muted">אירועים מתועדים</div></div></div>
+      <div class="col-md-4"><div class="card p-3 text-center"><div class="display-6 text-success">${fAvg}</div><div class="small text-muted">ממוצע תפקוד</div></div></div>
+      <div class="col-md-4"><div class="card p-3 text-center"><div class="display-6 text-info">${tAvg}</div><div class="small text-muted">ממוצע מבחנים</div></div></div>
+    </div>`;
+
+  if (focusedMeeting) {
+    const fmDt = focusedMeeting['תאריך'] ? new Date(focusedMeeting['תאריך']).toLocaleDateString('he-IL') : '';
+    const fmLines = String(focusedMeeting['סיכום']||'').split('\n').map(l => {
+      if (l.startsWith('▸')) return `<h5 class="mt-3 text-primary">${escHtml(l.replace('▸','').trim())}</h5>`;
+      if (l.match(/^─+$/)) return '';
+      return l.trim() ? `<p class="mb-2">${escHtml(l)}</p>` : '';
+    }).filter(Boolean).join('');
+    html += `<div class="card p-4 mb-3 border-primary" style="border-width:2px">
+      <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <h4 class="mb-0"><i class="bi bi-people-fill text-primary"></i> ${escHtml(focusedMeeting['נושא']||'הכנה לאסיפת הורים')}</h4>
+        <div>
+          ${focusedMeeting['רב'] ? `<span class="badge bg-info-subtle text-info-emphasis border me-1"><i class="bi bi-person-fill"></i> ${escHtml(focusedMeeting['רב'])}</span>` : ''}
+          ${focusedMeeting['תקופה'] ? `<span class="badge bg-light text-dark border">${escHtml(focusedMeeting['תקופה'])}</span>` : ''}
+          ${fmDt ? `<span class="text-muted ms-2">${escHtml(fmDt)}</span>` : ''}
+        </div>
+      </div>
+      <div style="line-height:1.7">${fmLines}</div>
+      ${focusedMeeting['הערות'] ? `<div class="alert alert-warning mt-3 mb-0 small"><strong>הערות:</strong> ${escHtml(focusedMeeting['הערות'])}</div>` : ''}
+    </div>`;
+  } else if (allMeetings.length) {
+    html += '<div class="card p-3 mb-3"><h5><i class="bi bi-people-fill"></i> אסיפות הורים</h5>';
+    allMeetings.slice(0, 5).forEach(m => {
+      const dt = m['תאריך'] ? new Date(m['תאריך']).toLocaleDateString('he-IL') : '';
+      const preview = String(m['סיכום']||'').replace(/▸/g,'').replace(/─+/g,' ').slice(0, 200);
+      html += `<div class="border-bottom py-2">
+        <div class="d-flex justify-content-between">
+          <strong>${escHtml(m['נושא']||'אסיפה')}</strong>
+          <small class="text-muted">${escHtml(dt)}</small>
+        </div>
+        ${m['רב'] ? `<div class="small text-muted">רב מדווח: ${escHtml(m['רב'])}</div>` : ''}
+        <div class="small mt-1">${escHtml(preview)}${preview.length >= 200 ? '...' : ''}</div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  if (events.length) {
+    html += '<div class="card p-3 mb-3"><h5><i class="bi bi-clipboard-check"></i> אירועים אחרונים</h5>';
+    events.slice(0, 10).forEach(e => {
+      const sev = e['חומרה']==='גבוהה'?'text-danger':e['חומרה']==='נמוכה'?'text-success':'text-warning';
+      const dt = new Date(e['תאריך']).toLocaleDateString('he-IL');
+      html += `<div class="border-bottom py-2">
+        <div class="d-flex justify-content-between">
+          <strong class="${sev}">${escHtml(e['קטגוריה']||'')}</strong>
+          <small class="text-muted">${escHtml(dt)}</small>
+        </div>
+        <div class="small mt-1">${escHtml(e['תיאור']||'')}</div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  if (tests.length) {
+    html += '<div class="card p-3 mb-3"><h5><i class="bi bi-pencil-square"></i> ציוני מבחנים אחרונים</h5><table class="table table-sm"><tr><th>סוג</th><th>פרשה</th><th>ציון</th></tr>';
+    tests.slice(0, 15).forEach(t => {
+      const score = parseFloat(t['ציון'])||0;
+      const color = score >= 85 ? 'success' : score >= 70 ? 'warning' : 'danger';
+      html += `<tr><td>${escHtml(t['סוג']||'')}</td><td>${escHtml(t['פרשה']||'')}</td><td><span class="badge bg-${color}">${score}</span></td></tr>`;
+    });
+    html += '</table></div>';
+  }
+
+  html += `<p class="text-center text-muted small mt-4">לפניות — מזכירות בית התלמוד · 6742853@gmail.com</p>`;
+  document.getElementById('content').innerHTML = html;
+}
+
+async function computeToken(sid) {
+  // Simple deterministic hash — not secure but enough to prevent guessing
+  const msg = String(sid) + '|BHT2026';
+  const buf = new TextEncoder().encode(msg);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  const hex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
+  return hex.slice(0, 12);
+}
+
+init();
+</script>
+</body>
+</html>

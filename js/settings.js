@@ -8,7 +8,7 @@ async function renderSettings() {
     <div class="card p-3 mb-3">
       <h5>משתמשים</h5>
       <table class="table table-hover">
-        <thead><tr><th>שם משתמש</th><th>תפקיד</th><th>הרשאות</th><th>פעולות</th></tr></thead>
+        <thead><tr><th>שם משתמש</th><th>תפקיד</th><th>הרשאות</th><th>כיתות</th><th>פעולות</th></tr></thead>
         <tbody id="users-tbody"></tbody>
       </table>
     </div>
@@ -29,19 +29,54 @@ async function renderSettings() {
         <i class="bi bi-arrow-up-square"></i> מעבר לשנה הבאה (כל התלמידים)
       </button>
     </div>
+    <div class="card p-3 mb-3">
+      <h5><i class="bi bi-tags"></i> קטגוריות התנהגות</h5>
+      <p class="text-muted small mb-2">הקטגוריות שמופיעות בטופס דיווח אירוע</p>
+      <div id="cats-list" class="d-flex flex-wrap gap-2 mb-2"></div>
+      <div class="input-group">
+        <input id="new-cat" class="form-control" placeholder="קטגוריה חדשה">
+        <button class="btn btn-primary" onclick="addCategory()"><i class="bi bi-plus"></i> הוסף</button>
+      </div>
+    </div>
+    <div class="card p-3 mb-3">
+      <h5><i class="bi bi-database"></i> גיבוי ושחזור</h5>
+      <p class="text-muted small mb-2">הורד גיבוי מלא של כל הנתונים (תלמידים, אירועים, תפקוד, מבחנים...) או שחזר מקובץ.</p>
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-outline-primary" onclick="downloadBackup()"><i class="bi bi-download"></i> הורד גיבוי JSON</button>
+        <button class="btn btn-outline-warning" onclick="document.getElementById('restore-file').click()"><i class="bi bi-upload"></i> שחזר מקובץ</button>
+        <input id="restore-file" type="file" accept=".json" class="d-none" onchange="restoreBackup(event)">
+        <button class="btn btn-outline-info" onclick="clearLocalCache()"><i class="bi bi-arrow-clockwise"></i> רענן מהשרת (נקה cache)</button>
+      </div>
+    </div>
+    <div class="card p-3 mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0"><i class="bi bi-journal-text"></i> יומן פעולות</h5>
+        <button class="btn btn-sm btn-outline-primary" onclick="loadAuditLog()"><i class="bi bi-arrow-clockwise"></i> רענן</button>
+      </div>
+      <div id="audit-log" class="small" style="max-height:300px;overflow-y:auto">
+        <p class="text-muted small">לחץ "רענן" להצגת יומן הפעולות מהשיטס</p>
+      </div>
+    </div>
+    <div class="card p-3 mb-3">
+      <h5><i class="bi bi-cloud"></i> סטטוס סנכרון</h5>
+      <div id="sync-status" class="small"></div>
+    </div>
     <div class="card p-3">
-      <h5>אודות המערכת</h5>
-      <ul class="mb-2">
-        <li>מערכת תלמוד תורה מעלה עמוס - גרסה 1.0</li>
-        <li>backend: Google Apps Script + Google Sheets (סנכרון אוטומטי)</li>
-        <li>אחסון מקומי כגיבוי (localStorage)</li>
-        <li>RTL עברית מלא</li>
+      <h5><i class="bi bi-info-circle"></i> אודות המערכת</h5>
+      <ul class="mb-2 small">
+        <li>בית התלמוד · גרסה 1.1 · תשפ"ו</li>
+        <li>Backend: Google Apps Script + Google Sheets (סנכרון אוטומטי כל 60 שניות)</li>
+        <li>אחסון מקומי localStorage כ-cache</li>
+        <li>תאריך עברי ופרשה דרך @hebcal/core</li>
+        <li>תצוגת RTL עברית מלא</li>
       </ul>
-      <a href="${SHEET_URL}" target="_blank" rel="noopener" class="btn btn-success">
+      <a href="${SHEET_URL}" target="_blank" rel="noopener" class="btn btn-success btn-sm">
         <i class="bi bi-table"></i> פתח את קובץ הנתונים בגוגל שיטס
       </a>
     </div>`;
   renderClasses();
+  renderCategories();
+  renderSyncStatus();
   const r = await api('listUsers', []);
   const users = r.data || [];
   const tbody = document.getElementById('users-tbody');
@@ -63,7 +98,10 @@ async function renderSettings() {
     const actions =
       `<button class="btn btn-sm btn-outline-primary me-1" onclick="editUser(${jsAttr(uname)})"><i class="bi bi-pencil"></i></button>
        ${deleteBtn}`;
-    return `<tr><td>${escHtml(uname)}</td><td><span class="badge ${cls}">${escHtml(role)}</span></td><td>${permBadges}</td><td>${actions}</td></tr>`;
+    const vc = u['כיתות_מורשות'] || u.visible_classes || 'all';
+    const classesBadge = (vc === 'all' || !vc) ? '<span class="text-muted small">הכל</span>' :
+      vc.split(',').map(c => `<span class="badge bg-info text-dark me-1">${escHtml(c.trim())}</span>`).join('');
+    return `<tr><td>${escHtml(uname)}</td><td><span class="badge ${cls}">${escHtml(role)}</span></td><td>${permBadges}</td><td>${classesBadge}</td><td>${actions}</td></tr>`;
   }).join('');
 }
 
@@ -78,6 +116,10 @@ async function editUser(username) {
     document.getElementById('nu-name').readOnly = false;
     document.getElementById('nu-name').dataset.originalUsername = u.username;
     document.getElementById('nu-pass').value = u.password_hash || '';
+    if (document.getElementById('nu-fullname')) document.getElementById('nu-fullname').value = u['שם מלא'] || u.full_name || '';
+    if (document.getElementById('nu-email')) document.getElementById('nu-email').value = u['אימייל'] || u.email || '';
+    if (document.getElementById('nu-phone')) document.getElementById('nu-phone').value = u['טלפון'] || u.phone || '';
+    if (document.getElementById('nu-notes')) document.getElementById('nu-notes').value = u['הערות_משתמש'] || u.notes || '';
     document.getElementById('nu-role').value = u.role || 'מורה';
     document.getElementById('nu-role').dispatchEvent(new Event('change'));
     const perms = (u.permissions || '').split(',').map(s=>s.trim());
@@ -88,9 +130,19 @@ async function editUser(username) {
     document.getElementById('all-students').checked = allStu;
     document.getElementById('all-students').dispatchEvent(new Event('change'));
     if (!allStu) {
+      const groupsToOpen = new Set();
       u.visible_students.split(',').map(s=>s.trim()).forEach(id => {
         const cb = document.getElementById('stu-' + id);
-        if (cb) cb.checked = true;
+        if (cb) {
+          cb.checked = true;
+          // Find the parent group class & expand it
+          const cls = Array.from(cb.classList).find(c => c.startsWith('stu-class-'));
+          if (cls) groupsToOpen.add(cls.replace('stu-class-', ''));
+        }
+      });
+      groupsToOpen.forEach(safe => {
+        const el = document.getElementById('stu-group-' + safe);
+        if (el && el.style.display === 'none') toggleStuClassGroup(safe);
       });
     }
     const allCat = !u.visible_categories || u.visible_categories === 'all';
@@ -100,6 +152,15 @@ async function editUser(username) {
       const wanted = u.visible_categories.split(',').map(s=>s.trim());
       document.querySelectorAll('.cat-cb').forEach(cb => {
         if (wanted.includes(cb.dataset.catName || cb.value)) cb.checked = true;
+      });
+    }
+    const allCls = !u.visible_classes || u.visible_classes === 'all';
+    document.getElementById('all-classes').checked = allCls;
+    document.getElementById('all-classes').dispatchEvent(new Event('change'));
+    if (!allCls) {
+      const wantedC = u.visible_classes.split(',').map(s=>s.trim());
+      document.querySelectorAll('.class-cb').forEach(cb => {
+        if (wantedC.includes(cb.value)) cb.checked = true;
       });
     }
     modalEl.dataset.editMode = '1';
@@ -187,7 +248,7 @@ async function saveClass(isEdit, originalName) {
     r = await api('addClass', [{'שם': name, 'סדר': order}]);
   }
   if (!r.ok) { alert(r.error || 'שגיאה'); return; }
-  bootstrap.Modal.getInstance(document.getElementById('classModal')).hide();
+  hideModal('classModal');
   renderClasses();
   if (typeof toast === 'function') toast(isEdit ? 'הכיתה עודכנה' : 'הכיתה נוספה', 'success');
 }
@@ -213,16 +274,25 @@ async function promoteAllConfirm() {
 
 const PERMISSION_AREAS = [
   { key: 'students', label: 'תלמידים', icon: 'bi-people', desc: 'צפייה והוספה של תלמידים' },
-  { key: 'behavior', label: 'מעקב התנהגות', icon: 'bi-clipboard-check', desc: 'תיעוד אירועים' },
-  { key: 'reports', label: 'דוחות וייצוא', icon: 'bi-file-earmark-pdf', desc: 'הורדת PDF' },
+  { key: 'behavior', label: 'מעקב התנהגות', icon: 'bi-clipboard-check', desc: 'תיעוד אירועי התנהגות' },
+  { key: 'functioning', label: 'ציוני תפקוד', icon: 'bi-bar-chart-line', desc: 'ציוני תפקוד 1-5' },
+  { key: 'tests', label: 'מבחנים', icon: 'bi-pencil-square', desc: 'ציוני מבחנים לפי פרשה' },
+  { key: 'medications', label: 'כדורים ורפואי', icon: 'bi-capsule', desc: 'מעקב תרופות' },
+  { key: 'attendance', label: 'נוכחות', icon: 'bi-check2-square', desc: 'נוכחות יומית' },
+  { key: 'meetings', label: 'אסיפות הורים', icon: 'bi-people-fill', desc: 'תיעוד פגישות' },
+  { key: 'conversations', label: 'שיחות עם תלמידים', icon: 'bi-chat-dots', desc: 'תיעוד שיחות אישיות עם תלמידים' },
+  { key: 'calendar', label: 'לוח שנה', icon: 'bi-calendar3', desc: 'תצוגה חודשית' },
+  { key: 'classview', label: 'תצוגת כיתה', icon: 'bi-grid-3x3-gap', desc: 'מבט-על על כיתה' },
+  { key: 'reports', label: 'דוחות וייצוא', icon: 'bi-file-earmark-pdf', desc: 'דוחות, PDF, מייל להורים' },
   { key: 'settings', label: 'ניהול משתמשים', icon: 'bi-gear', desc: 'הוספה ועריכה של משתמשים' },
 ];
 
 const ROLE_DEFAULTS = {
-  'מנהל': ['students','behavior','reports','settings'],
-  'רב': ['students','behavior','reports'],
-  'מורה': ['students','behavior'],
-  'קריאה בלבד': ['students'],
+  'מנהל': ['students','behavior','functioning','tests','medications','attendance','meetings','conversations','calendar','classview','reports','settings'],
+  'רב': ['students','behavior','functioning','tests','medications','attendance','meetings','conversations','calendar','classview','reports'],
+  'מורה': ['students','behavior','functioning','attendance','conversations','classview','calendar'],
+  'מזכירות': ['students','meetings','reports','attendance','calendar'],
+  'קריאה בלבד': ['students','classview','calendar'],
   'מותאם אישית': [],
 };
 
@@ -239,11 +309,39 @@ function addUserModal() {
     </div>
   `).join('');
 
-  const studentOpts = data.students.map(s => `
-    <div class="form-check">
-      <input class="form-check-input student-cb" type="checkbox" value="${escHtml(s['מזהה'])}" id="stu-${escHtml(s['מזהה'])}">
-      <label class="form-check-label" for="stu-${escHtml(s['מזהה'])}">${escHtml(s['שם פרטי']||'')} ${escHtml(s['שם משפחה']||'')} <small class="text-muted">(${escHtml(s['מחזור']||'')})</small></label>
-    </div>`).join('');
+  // Group students by class
+  const studentsByClass = {};
+  data.students.forEach(s => {
+    const cls = s['מחזור'] || 'ללא כיתה';
+    if (!studentsByClass[cls]) studentsByClass[cls] = [];
+    studentsByClass[cls].push(s);
+  });
+  const sortedClasses = Object.keys(studentsByClass).sort((a,b) => {
+    const ca = (data.classes || []).find(c => c['שם'] === a);
+    const cb = (data.classes || []).find(c => c['שם'] === b);
+    return (parseInt(ca?.['סדר']) || 99) - (parseInt(cb?.['סדר']) || 99);
+  });
+  const studentOpts = sortedClasses.map(cls => {
+    const slist = studentsByClass[cls].slice().sort((a,b) => (a['שם משפחה']||'').localeCompare(b['שם משפחה']||'', 'he'));
+    const safe = cls.replace(/[^א-תa-zA-Z0-9]/g, '_');
+    return `<div class="border rounded mb-2">
+      <div class="d-flex justify-content-between align-items-center p-2 bg-light" style="cursor:pointer" onclick="toggleStuClassGroup('${safe}')">
+        <strong>כיתה ${escHtml(cls)} <span class="text-muted small">(${slist.length})</span></strong>
+        <div>
+          <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation();selectAllInClass('${safe}', true)">סמן הכל</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary me-1" onclick="event.stopPropagation();selectAllInClass('${safe}', false)">נקה</button>
+          <i class="bi bi-chevron-down" id="stu-group-chevron-${safe}"></i>
+        </div>
+      </div>
+      <div class="p-2" id="stu-group-${safe}" style="display:none">
+        ${slist.map(s => `
+          <div class="form-check">
+            <input class="form-check-input student-cb stu-class-${safe}" type="checkbox" value="${escHtml(s['מזהה'])}" id="stu-${escHtml(s['מזהה'])}">
+            <label class="form-check-label" for="stu-${escHtml(s['מזהה'])}">${escHtml(s['שם פרטי']||'')} ${escHtml(s['שם משפחה']||'')}</label>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
 
   const catOpts = data.categories.map((c, i) => `
     <div class="form-check">
@@ -256,22 +354,54 @@ function addUserModal() {
     <div class="modal-body">
       <div class="row g-3">
         <div class="col-md-6">
-          <label class="form-label">שם משתמש</label>
-          <input id="nu-name" class="form-control form-control-lg" placeholder="לדוגמה: rabbi.cohen">
+          <label class="form-label">שם משתמש <span class="text-danger">*</span></label>
+          <input id="nu-name" class="form-control" placeholder="לדוגמה: rabbi.cohen">
         </div>
         <div class="col-md-6">
-          <label class="form-label">סיסמה</label>
-          <input id="nu-pass" class="form-control form-control-lg" placeholder="לפחות 4 ספרות">
+          <label class="form-label">סיסמה <span class="text-danger">*</span></label>
+          <input id="nu-pass" class="form-control" placeholder="לפחות 4 ספרות">
         </div>
-        <div class="col-12">
-          <label class="form-label">תפקיד</label>
-          <select id="nu-role" class="form-select form-select-lg">
+        <div class="col-md-6">
+          <label class="form-label">שם מלא</label>
+          <input id="nu-fullname" class="form-control" placeholder="הרב פלוני אלמוני">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">תפקיד <span class="text-danger">*</span></label>
+          <select id="nu-role" class="form-select">
             ${Object.keys(ROLE_DEFAULTS).map(r => `<option value="${r}">${r}</option>`).join('')}
           </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">אימייל</label>
+          <input id="nu-email" type="email" class="form-control" placeholder="user@example.com">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">טלפון</label>
+          <input id="nu-phone" class="form-control" placeholder="052-1234567">
+        </div>
+        <div class="col-12">
+          <label class="form-label">הערות</label>
+          <textarea id="nu-notes" class="form-control" rows="2" placeholder="הערות אופציונליות..."></textarea>
         </div>
         <div class="col-12">
           <h6 class="mt-2"><i class="bi bi-shield-check"></i> מסכים שיוכל לראות:</h6>
           ${checkboxes}
+        </div>
+        <div class="col-12">
+          <h6 class="mt-2"><i class="bi bi-mortarboard"></i> אילו כיתות יוכל לראות?</h6>
+          <div class="border rounded p-2 mb-2">
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="all-classes" checked>
+              <label class="form-check-label fw-bold" for="all-classes">כל הכיתות</label>
+            </div>
+            <div id="class-list" class="d-none d-flex flex-wrap gap-3">
+              ${(data.classes || []).slice().sort((a,b) => parseInt(a['סדר'])-parseInt(b['סדר'])).map(c => `
+                <div class="form-check">
+                  <input class="form-check-input class-cb" type="checkbox" value="${escHtml(c['שם'])}" id="cls-perm-${escHtml(c['שם'])}">
+                  <label class="form-check-label" for="cls-perm-${escHtml(c['שם'])}">כיתה <strong>${escHtml(c['שם'])}</strong></label>
+                </div>`).join('')}
+            </div>
+          </div>
         </div>
         <div class="col-12">
           <h6 class="mt-2"><i class="bi bi-people"></i> אילו תלמידים יוכל לראות?</h6>
@@ -325,24 +455,51 @@ function addUserModal() {
   document.getElementById('all-cats').addEventListener('change', e => {
     document.getElementById('cat-list').classList.toggle('d-none', e.target.checked);
   });
+  document.getElementById('all-classes').addEventListener('change', e => {
+    document.getElementById('class-list').classList.toggle('d-none', e.target.checked);
+  });
+}
+
+function toggleStuClassGroup(safe) {
+  const el = document.getElementById('stu-group-' + safe);
+  const chev = document.getElementById('stu-group-chevron-' + safe);
+  if (!el) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  if (chev) chev.className = open ? 'bi bi-chevron-down' : 'bi bi-chevron-up';
+}
+
+function selectAllInClass(safe, check) {
+  document.querySelectorAll('.stu-class-' + safe).forEach(cb => { cb.checked = check; });
+  // Open the group when interacting with it
+  const el = document.getElementById('stu-group-' + safe);
+  if (el && el.style.display === 'none') toggleStuClassGroup(safe);
 }
 
 async function saveUser() {
   const checked = Array.from(document.querySelectorAll('.perm-cb:checked')).map(c => c.value);
   const allStudents = document.getElementById('all-students').checked;
   const allCats = document.getElementById('all-cats').checked;
+  const allClasses = document.getElementById('all-classes').checked;
   const visibleStudents = allStudents ? 'all' :
     Array.from(document.querySelectorAll('.student-cb:checked')).map(c => c.value).join(',');
   const visibleCats = allCats ? 'all' :
     Array.from(document.querySelectorAll('.cat-cb:checked')).map(c => c.value).join(',');
+  const visibleClasses = allClasses ? 'all' :
+    Array.from(document.querySelectorAll('.class-cb:checked')).map(c => c.value).join(',');
 
   const obj = {
     'שם משתמש': document.getElementById('nu-name').value.trim(),
     'סיסמה': document.getElementById('nu-pass').value.trim(),
+    'שם מלא': (document.getElementById('nu-fullname')?.value || '').trim(),
     'תפקיד': document.getElementById('nu-role').value,
+    'אימייל': (document.getElementById('nu-email')?.value || '').trim(),
+    'טלפון': (document.getElementById('nu-phone')?.value || '').trim(),
+    'הערות_משתמש': (document.getElementById('nu-notes')?.value || '').trim(),
     'הרשאות': checked.length === PERMISSION_AREAS.length ? 'all' : checked.join(','),
     'תלמידים_מורשים': visibleStudents,
     'קטגוריות_מורשות': visibleCats,
+    'כיתות_מורשות': visibleClasses,
   };
   if (!obj['שם משתמש'] || !obj['סיסמה']) return alert('שם וסיסמה חובה');
   if (!checked.length) return alert('יש לסמן לפחות מסך אחד');
@@ -354,7 +511,7 @@ async function saveUser() {
   }
   const r = editMode ? await api('updateUser', [obj]) : await api('addUser', [obj]);
   if (!r.ok) { alert(r.error || 'שגיאה'); return; }
-  bootstrap.Modal.getInstance(document.getElementById('addUModal')).hide();
+  hideModal('addUModal');
   // Refresh in-memory currentUser if user edited themselves (read fresh from _data.users)
   if (typeof currentUser !== 'undefined' && currentUser) {
     const editedSelf = editMode && (originalUsername === currentUser.username || obj['שם משתמש'] === currentUser.username);
@@ -374,7 +531,174 @@ async function saveUser() {
   renderSettings();
 }
 
-async function renderReports() {
+function renderCategories() {
+  const el = document.getElementById('cats-list');
+  if (!el) return;
+  const data = getData();
+  const cats = data.categories || [];
+  if (!cats.length) {
+    el.innerHTML = '<span class="text-muted small">אין קטגוריות מוגדרות</span>';
+    return;
+  }
+  el.innerHTML = cats.map((c, i) => `
+    <span class="badge bg-light text-dark border p-2 d-inline-flex align-items-center gap-2">
+      <i class="bi bi-tag"></i>
+      ${escHtml(c.name || c['קטגוריה'] || '')}
+      <button class="btn-close btn-close-sm" style="font-size:.6rem" onclick="deleteCategory(${i})"></button>
+    </span>
+  `).join('');
+}
+
+async function addCategory() {
+  const name = document.getElementById('new-cat').value.trim();
+  if (!name) return;
+  const r = await api('addCategory', [name]);
+  if (!r.ok) return alert(r.error || 'שגיאה');
+  document.getElementById('new-cat').value = '';
+  renderCategories();
+  notify('הקטגוריה נוספה', 'success');
+}
+
+async function deleteCategory(idx) {
+  const data = getData();
+  const c = data.categories[idx];
+  const name = c.name || c['קטגוריה'];
+  if (!confirm(`למחוק את הקטגוריה "${name}"?`)) return;
+  const r = await api('deleteCategory', [name]);
+  if (!r.ok) return alert(r.error || 'שגיאה');
+  renderCategories();
+  notify('נמחק', 'success');
+}
+
+async function loadAuditLog() {
+  const el = document.getElementById('audit-log');
+  if (!el) return;
+  el.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm"></div> טוען...</div>';
+  const r = await api('listAuditLog', []);
+  if (!r.ok) {
+    el.innerHTML = `<p class="text-danger small mb-0"><i class="bi bi-exclamation-triangle"></i> ${escHtml(r.error || 'שגיאה בטעינה')}</p>`;
+    return;
+  }
+  const rows = (r.data || []).slice().reverse().slice(0, 50);
+  if (!rows.length) {
+    el.innerHTML = '<p class="text-muted small mb-0">אין פעולות מתועדות</p>';
+    return;
+  }
+  el.innerHTML = '<table class="table table-sm mb-0"><thead><tr><th>תאריך</th><th>משתמש</th><th>פעולה</th><th>טאב</th><th>תיאור</th></tr></thead><tbody>' +
+    rows.map(r => {
+      const dt = r['תאריך'] ? new Date(r['תאריך']).toLocaleString('he-IL') : '';
+      const actionColor = r['פעולה']==='מחיקה'?'text-danger':r['פעולה']==='הוספה'?'text-success':'text-primary';
+      return `<tr>
+        <td class="text-muted" style="white-space:nowrap">${escHtml(dt)}</td>
+        <td><strong>${escHtml(r['משתמש']||'')}</strong></td>
+        <td class="${actionColor}">${escHtml(r['פעולה']||'')}</td>
+        <td><span class="badge bg-light text-dark">${escHtml(r['טאב']||'')}</span></td>
+        <td class="small">${escHtml(r['תיאור']||'')}</td>
+      </tr>`;
+    }).join('') + '</tbody></table>';
+}
+
+function renderSyncStatus() {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  const data = getData();
+  const counts = {
+    'תלמידים': (data.students || []).length,
+    'אירועי התנהגות': (data.behavior || []).length,
+    'ציוני תפקוד': (data.functioning || []).length,
+    'מבחנים': (data.tests || []).length,
+    'כדורים': (data.medications || []).length,
+    'אסיפות': (data.meetings || []).length,
+    'נוכחות': (data.attendance || []).length,
+    'משתמשים': (data.users || []).length,
+    'כיתות': (data.classes || []).length,
+    'קטגוריות': (data.categories || []).length,
+  };
+  el.innerHTML = '<div class="row g-2">' + Object.entries(counts).map(([k,v]) =>
+    `<div class="col-md-3 col-sm-6"><strong>${escHtml(k)}:</strong> <span class="badge bg-primary">${v}</span></div>`
+  ).join('') + '</div>';
+}
+
+function downloadBackup() {
+  const data = getData();
+  const backup = {
+    version: '1.1',
+    exportedAt: new Date().toISOString(),
+    students: data.students,
+    behavior: data.behavior,
+    functioning: data.functioning,
+    tests: data.tests,
+    medications: data.medications,
+    meetings: data.meetings,
+    attendance: data.attendance,
+    users: data.users,
+    categories: data.categories,
+    classes: data.classes,
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `cheder-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  notify('הגיבוי הורד', 'success');
+}
+
+function restoreBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (!confirm('שחזור יחליף את הנתונים בדפדפן וידחוף הכל לשיטס. פעולה כבדה — להמשיך?')) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const backup = JSON.parse(e.target.result);
+      const tabMap = {
+        students: 'תלמידים', behavior: 'מעקב_התנהגות',
+        functioning: 'תפקוד', tests: 'מבחנים',
+        medications: 'כדורים', meetings: 'אסיפות',
+        attendance: 'נוכחות', categories: 'קטגוריות',
+      };
+      const d = getData();
+      let pushed = 0;
+      for (const [k, tabName] of Object.entries(tabMap)) {
+        const arr = backup[k];
+        if (!Array.isArray(arr) || !arr.length) continue;
+        d[k] = arr;
+        // Bulk push to sheet
+        try {
+          const body = btoa(unescape(encodeURIComponent(JSON.stringify({ tab: tabName, rows: arr, replace: true }))));
+          const form = new URLSearchParams({
+            action: 'cheder_bulkAppend', token: AGENT_TOKEN, instance: INSTANCE, body_b64: body,
+          });
+          await fetch(APPS_SCRIPT_URL, { method: 'POST', body: form.toString(), headers: {'Content-Type':'application/x-www-form-urlencoded'} });
+          pushed += arr.length;
+        } catch (err) { console.error('Restore push failed for', tabName, err); }
+      }
+      saveStored(d);
+      markLocalChange();
+      notify(`הגיבוי שוחזר — ${pushed} שורות נדחפו לשיטס. רענן את הדף.`, 'success');
+    } catch (err) {
+      alert('שגיאה בקריאת הגיבוי: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function clearLocalCache() {
+  if (!confirm('לנקות את ה-cache המקומי ולמשוך את הנתונים מחדש מהשרת?')) return;
+  // Round-8 fix: clear all cheder-related localStorage keys, not just main
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem('cheder_pending_writes');
+    localStorage.removeItem('cheder_failed_writes');
+    // Clean up any corrupt backups
+    Object.keys(localStorage).filter(k => k.startsWith(STORAGE_KEY + '_corrupt_')).forEach(k => localStorage.removeItem(k));
+  } catch {}
+  notify('Cache נוקה. טוען מחדש...', 'success');
+  setTimeout(() => location.reload(), 1000);
+}
+
+// Legacy advanced filter — accessed from reports page if needed
+async function renderReportsAdvancedFilter() {
   const data = getData();
   const cycles = [...new Set(data.students.map(s => s['מחזור']).filter(Boolean))];
   const cats = data.categories.map(c => c.name);
@@ -524,17 +848,23 @@ function resetReportFilters() {
 }
 
 function exportFilteredCSV() {
+  // Bug #35 fix: quote every field; prefix with ' if starts with =,+,-,@ (formula injection)
+  const safe = (v) => {
+    let s = String(v == null ? '' : v).replace(/"/g, '""');
+    if (/^[=+\-@]/.test(s)) s = "'" + s;
+    return `"${s}"`;
+  };
   let csv = '﻿';  // BOM for Excel Hebrew
   csv += 'תלמידים\n';
   csv += 'מזהה,שם,גיל,מחזור,טלפון אם,טלפון אב\n';
   _filteredStudents.forEach(s => {
-    csv += `${s['מזהה']||''},"${s['שם פרטי']||''} ${s['שם משפחה']||''}",${s['גיל']||''},${s['מחזור']||''},${s['טלפון אם']||''},${s['טלפון אב']||''}\n`;
+    csv += [s['מזהה']||'', (s['שם פרטי']||'')+' '+(s['שם משפחה']||''), s['גיל']||'', s['מחזור']||'', s['טלפון אם']||'', s['טלפון אב']||''].map(safe).join(',') + '\n';
   });
   csv += '\nאירועי התנהגות\n';
   csv += 'תאריך,תלמיד,קטגוריה,חומרה,תיאור\n';
   _filteredEvents.forEach(e => {
     const dt = e['תאריך'] ? new Date(e['תאריך']).toLocaleString('he-IL') : '';
-    csv += `${dt},"${e['שם תלמיד']||''}","${e['קטגוריה']||''}",${e['חומרה']||''},"${(e['תיאור']||'').replace(/"/g,'""')}"\n`;
+    csv += [dt, e['שם תלמיד']||'', e['קטגוריה']||'', e['חומרה']||'', e['תיאור']||''].map(safe).join(',') + '\n';
   });
   const blob = new Blob([csv], {type: 'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
@@ -559,11 +889,15 @@ td{padding:6px 8px;border:1px solid #e5e7eb}
 @media print{.print-btn{display:none}}
 </style></head><body>
 <button class="print-btn" onclick="window.print()" style="background:#0066cc;color:#fff;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;margin-bottom:20px">🖨 הדפס</button>
-<h1>דוח תלמוד תורה מעלה עמוס - ${escHtml(today)}</h1>
+<h1>דוח בית התלמוד - ${escHtml(today)}</h1>
 <p>תלמידים: ${_filteredStudents.length} · אירועים: ${_filteredEvents.length}</p>
 ${_filteredStudents.length ? `<h2>תלמידים</h2><table><tr><th>שם</th><th>גיל</th><th>כיתה</th><th>טלפון</th></tr>${_filteredStudents.map(s=>`<tr><td>${escHtml((s['שם פרטי']||'') + ' ' + (s['שם משפחה']||''))}</td><td>${escHtml(s['גיל']||'')}</td><td>${escHtml(s['מחזור']||'')}</td><td>${escHtml(s['טלפון אם']||'')}</td></tr>`).join('')}</table>` : ''}
 ${_filteredEvents.length ? `<h2>אירועי התנהגות</h2>${_filteredEvents.map(e=>{const c=e['חומרה']==='גבוהה'?'high':e['חומרה']==='נמוכה'?'low':'mid';const rep=e['דווח_עי']?` · דווח ע"י ${escHtml(e['דווח_עי'])}`:'';return `<div class="event ${c}"><strong>${escHtml(e['שם תלמיד']||'')}</strong> · ${escHtml(e['קטגוריה']||'')} · ${escHtml(new Date(e['תאריך']).toLocaleString('he-IL'))}${rep}<br>${escHtml(e['תיאור']||'')}</div>`}).join('')}` : ''}
-<script>setTimeout(()=>window.print(), 500);</script>
+<script>
+const _doPrint=()=>window.print();
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>setTimeout(_doPrint,200));
+else window.addEventListener('load',()=>setTimeout(_doPrint,500));
+</script>
 </body></html>`;
   const w = window.open('', '_blank');
   if (!w) { alert('הדפדפן חוסם חלונות פופ-אפ — אפשר חלון פופ-אפ לאתר ונסה שוב'); return; }
@@ -584,7 +918,7 @@ function generateReport(type) {
     title = 'מעקב התנהגות';
     content = renderBehaviorReport(data.behavior, data.students);
   } else {
-    title = 'דוח מלא - תלמוד תורה מעלה עמוס';
+    title = 'דוח מלא - בית התלמוד';
     content = renderStudentsReport(data.students) + '<div style="page-break-after:always"></div>' + renderBehaviorReport(data.behavior, data.students);
   }
 
@@ -616,10 +950,14 @@ tr:nth-child(even) td{background:#fafafa}
 <button class="print-btn" onclick="window.print()">🖨 הדפס/שמור PDF</button>
 <div class="header">
   <h1>${escHtml(title)}</h1>
-  <div class="subtitle">תלמוד תורה מעלה עמוס · הופק ב-${escHtml(today)} בשעה ${escHtml(time)}</div>
+  <div class="subtitle">בית התלמוד · הופק ב-${escHtml(today)} בשעה ${escHtml(time)}</div>
 </div>
 ${content}
-<script>setTimeout(()=>window.print(), 500);</script>
+<script>
+const _doPrint=()=>window.print();
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>setTimeout(_doPrint,200));
+else window.addEventListener('load',()=>setTimeout(_doPrint,500));
+</script>
 </body></html>`;
 
   const w = window.open('', '_blank');
