@@ -1179,36 +1179,46 @@ function _exportStudentsCSV() {
   a.click();
 }
 
-// Bulk import: CSV / XLSX / paste from Sheet
+// Bulk import: CSV / XLSX / paste from Sheet — with preview + confirm
+let _pendingImport = null;  // { rows: [[...], ...], source: 'file'|'paste' }
+
 function importStudentsCSV() {
   const modal = document.createElement('div');
-  modal.className = 'modal fade show';
-  modal.style.cssText = 'display:block;background:rgba(0,0,0,0.5)';
+  modal.className = 'modal fade show import-modal';
+  modal.style.cssText = 'display:block;background:rgba(0,0,0,0.5);overflow-y:auto';
   modal.innerHTML = `
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">📥 ייבוא תלמידים בכמות</h5>
-          <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+          <button type="button" class="btn-close" onclick="closeImportModal()"></button>
         </div>
         <div class="modal-body">
           <ul class="nav nav-tabs mb-3">
-            <li class="nav-item"><a class="nav-link active" data-tab="file" onclick="impTab(event,'file')">📁 קובץ (CSV / Excel)</a></li>
+            <li class="nav-item"><a class="nav-link active" data-tab="file" onclick="impTab(event,'file')">📁 קובץ Excel / CSV</a></li>
             <li class="nav-item"><a class="nav-link" data-tab="paste" onclick="impTab(event,'paste')">📋 הדבקה מ-Google Sheets</a></li>
           </ul>
           <div id="impFile">
-            <p class="text-muted small">בחר קובץ <code>.csv</code> או <code>.xlsx</code>. השורה הראשונה צריכה להיות שמות עמודות.</p>
+            <p class="text-muted small">בחר קובץ <code>.xlsx</code> או <code>.csv</code>. השורה הראשונה = שמות עמודות.</p>
             <input type="file" id="impFileInput" accept=".csv,.xlsx,.xls,.txt" class="form-control mb-2">
             <details class="small text-muted">
-              <summary>עמודות מומלצות</summary>
-              <code>שם פרטי, שם משפחה, גיל, מחזור, תאריך לידה, שם אם, טלפון אם, שם אב, טלפון אב, כתובת, אלרגיה, הערות</code>
+              <summary>עמודות מומלצות (חובה לפחות שם פרטי + שם משפחה)</summary>
+              <div class="p-2"><code>שם פרטי, שם משפחה, גיל, מחזור, תאריך לידה, שם אם, טלפון אם, שם אב, טלפון אב, כתובת, אלרגיה, הערות רפואיות, הערות</code></div>
             </details>
           </div>
           <div id="impPaste" style="display:none">
-            <p class="text-muted small">פתח את הקובץ ב-Google Sheets, סמן את כל השורות (כולל כותרות), Ctrl+C, והדבק כאן Ctrl+V:</p>
-            <textarea id="impPasteArea" class="form-control" rows="10" placeholder="שם פרטי&#9;שם משפחה&#9;גיל&#9;מחזור&#10;יוסף&#9;כהן&#9;7&#9;א&#10;..."></textarea>
-            <button class="btn btn-primary mt-2" onclick="doPasteImport()"><i class="bi bi-check"></i> ייבא</button>
+            <p class="text-muted small mb-2"><b>איך:</b> פותחים את הGoogle Sheet, מסמנים את כל השורות (כולל כותרות), <kbd>Ctrl+C</kbd>, ומדביקים <kbd>Ctrl+V</kbd> כאן בתיבה.</p>
+            <textarea id="impPasteArea" class="form-control" rows="8" placeholder="הדבק כאן... (מבוסס Tab — מ-Google Sheets זה אוטומטי)"></textarea>
+            <button class="btn btn-outline-primary mt-2" onclick="doPasteImport()"><i class="bi bi-arrow-down-circle"></i> זיהוי שורות מהטקסט</button>
           </div>
+
+          <div id="impPreview" style="display:none" class="mt-3"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeImportModal()">ביטול</button>
+          <button class="btn btn-primary" id="impConfirmBtn" disabled onclick="confirmImport()">
+            <i class="bi bi-check2-circle"></i> <span id="impConfirmLabel">ייבא</span>
+          </button>
         </div>
       </div>
     </div>`;
@@ -1216,12 +1226,23 @@ function importStudentsCSV() {
   document.getElementById('impFileInput').onchange = doFileImport;
 }
 
+function closeImportModal() {
+  document.querySelectorAll('.import-modal').forEach(m => m.remove());
+  _pendingImport = null;
+}
+window.closeImportModal = closeImportModal;
+
 function impTab(ev, name) {
   ev.preventDefault();
   document.querySelectorAll('.nav-link[data-tab]').forEach(a => a.classList.toggle('active', a.dataset.tab === name));
   document.getElementById('impFile').style.display = name === 'file' ? '' : 'none';
   document.getElementById('impPaste').style.display = name === 'paste' ? '' : 'none';
+  // Clear preview when switching tabs
+  document.getElementById('impPreview').style.display = 'none';
+  document.getElementById('impConfirmBtn').disabled = true;
+  _pendingImport = null;
 }
+window.impTab = impTab;
 
 async function doFileImport(e) {
   const file = e.target.files[0];
@@ -1230,7 +1251,7 @@ async function doFileImport(e) {
   const isXlsx = /\.(xlsx|xls)$/i.test(file.name);
   try {
     if (isXlsx) {
-      if (typeof XLSX === 'undefined') return alert('ספריית XLSX לא נטענה');
+      if (typeof XLSX === 'undefined') { alert('ספריית XLSX לא נטענה. רענן את הדף.'); return; }
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
@@ -1240,26 +1261,73 @@ async function doFileImport(e) {
       rows = parseCSV(text);
     }
   } catch (err) {
-    return alert('שגיאת קריאת קובץ: ' + err.message);
+    alert('שגיאת קריאת קובץ: ' + err.message); return;
   }
-  await runBulkImport(rows);
+  showImportPreview(rows, `הקובץ "${file.name}"`);
 }
 
-async function doPasteImport() {
+function doPasteImport() {
   const text = document.getElementById('impPasteArea').value.trim();
-  if (!text) return alert('אין מה לייבא');
-  // Tab-separated (typical Google Sheets paste)
-  const rows = text.split(/\r?\n/).map(line => line.split('\t'));
-  await runBulkImport(rows);
+  if (!text) { alert('התיבה ריקה. הדבק תוכן מ-Sheets קודם (Ctrl+V).'); return; }
+  // Tab-separated (typical Google Sheets paste). Fallback to commas.
+  let rows = text.split(/\r?\n/).map(line => line.split('\t'));
+  // If only 1 column detected (no tabs), try CSV
+  if (rows[0].length === 1 && text.includes(',')) rows = parseCSV(text);
+  showImportPreview(rows, 'הטקסט שהדבקת');
 }
+window.doPasteImport = doPasteImport;
 
-async function runBulkImport(rows) {
-  if (!rows || rows.length < 2) return alert('הקובץ ריק או חסר כותרות');
+function showImportPreview(rows, sourceLabel) {
+  const preview = document.getElementById('impPreview');
+  if (!rows || rows.length < 1) {
+    preview.style.display = 'block';
+    preview.innerHTML = `<div class="alert alert-danger">לא נמצאו שורות ב${sourceLabel}.</div>`;
+    document.getElementById('impConfirmBtn').disabled = true;
+    return;
+  }
+  if (rows.length < 2) {
+    preview.style.display = 'block';
+    preview.innerHTML = `<div class="alert alert-warning">מצאתי שורה אחת בלבד — לא ברור אם זו כותרת או נתונים. צריך לפחות 2 שורות (כותרות + שורת נתונים אחת).</div>`;
+    document.getElementById('impConfirmBtn').disabled = true;
+    return;
+  }
   const headers = rows[0].map(h => String(h).trim());
+  const dataRows = rows.slice(1).filter(r => r.some(c => String(c||'').trim()));
+  const valid = dataRows.filter(r => {
+    const obj = {};
+    headers.forEach((h,j) => obj[h] = String(r[j]||'').trim());
+    return obj['שם פרטי'] || obj['שם משפחה'];
+  });
+  const sample = valid.slice(0, 5);
+  const sampleHtml = sample.map(r => `<tr>${headers.slice(0,6).map((h,j) => `<td>${escHtml(r[j]||'-')}</td>`).join('')}</tr>`).join('');
+  preview.style.display = 'block';
+  preview.innerHTML = `
+    <div class="card p-3" style="background:#f6f8fa">
+      <h6>✅ זוהו ${valid.length} תלמידים תקינים מ-${sourceLabel}</h6>
+      ${valid.length !== dataRows.length ? `<div class="text-muted small">⏭️ ${dataRows.length - valid.length} שורות ייעלמו (חסר שם פרטי/משפחה)</div>` : ''}
+      <div class="text-muted small mt-1">עמודות שזוהו: <code>${headers.slice(0,12).map(escHtml).join(', ')}${headers.length > 12 ? '...' : ''}</code></div>
+      <hr>
+      <div class="small text-muted mb-1">תצוגה מקדימה (5 הראשונים):</div>
+      <div style="overflow-x:auto"><table class="table table-sm table-bordered mb-0">
+        <thead><tr>${headers.slice(0,6).map(h => `<th>${escHtml(h)}</th>`).join('')}</tr></thead>
+        <tbody>${sampleHtml}</tbody>
+      </table></div>
+    </div>`;
+  _pendingImport = { headers, rows: valid };
+  const btn = document.getElementById('impConfirmBtn');
+  btn.disabled = false;
+  document.getElementById('impConfirmLabel').textContent = `ייבא ${valid.length} תלמידים`;
+}
+window.showImportPreview = showImportPreview;
+
+async function confirmImport() {
+  if (!_pendingImport || !_pendingImport.rows.length) return;
+  const btn = document.getElementById('impConfirmBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> מייבא...';
+  const { headers, rows } = _pendingImport;
   let added = 0, skipped = 0;
   let maxId = _students.reduce((m,s) => Math.max(m, parseInt(s['מזהה'])||0), 0);
-  for (let i = 1; i < rows.length; i++) {
-    const values = rows[i];
+  for (const values of rows) {
     const obj = {};
     headers.forEach((h,j) => obj[h] = String(values[j] !== undefined ? values[j] : '').trim());
     if (!obj['שם פרטי'] && !obj['שם משפחה']) { skipped++; continue; }
@@ -1267,13 +1335,13 @@ async function runBulkImport(rows) {
     const r = await api('addStudent', [obj]);
     if (r.ok) added++; else skipped++;
   }
-  alert(`✅ יובאו ${added} תלמידים${skipped ? `\n⏭️ דולגו ${skipped} שורות (ריקות / שגיאה)` : ''}`);
-  document.querySelectorAll('.modal.show').forEach(m => m.remove());
+  closeImportModal();
+  if (typeof notify === 'function') notify(`✅ נוספו ${added} תלמידים${skipped ? `, ${skipped} דולגו` : ''}`, 'success');
+  else alert(`✅ נוספו ${added} תלמידים${skipped ? `\n⏭️ ${skipped} דולגו` : ''}`);
   renderStudents();
   loadStats();
 }
-window.impTab = impTab;
-window.doPasteImport = doPasteImport;
+window.confirmImport = confirmImport;
 
 // Bug #6 fix: streaming CSV parser that handles quoted multi-line fields
 function parseCSV(text) {

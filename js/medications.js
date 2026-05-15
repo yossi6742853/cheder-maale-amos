@@ -6,7 +6,7 @@ async function renderMedications() {
   const html = `
     <div class="mb-3"><button class="btn btn-link p-0" onclick="goto('home')"><i class="bi bi-arrow-right"></i> חזרה לתפריט</button></div>
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-      <h3 class="mb-0"><i class="bi bi-capsule"></i> כדורים ומעקב רפואי</h3>
+      <h3 class="mb-0"><i class="bi bi-capsule"></i> רפואי — אלרגיות, רגישויות, כדורים</h3>
       <div class="btn-group">
         <button class="btn btn-primary" onclick="medAddModal()"><i class="bi bi-plus"></i> רישום חדש</button>
         <button class="btn btn-outline-info" onclick="medExportCSV()"><i class="bi bi-download"></i> ייצוא CSV</button>
@@ -63,7 +63,8 @@ function medsRefresh() {
             <button class="btn btn-sm btn-outline-danger" onclick="medDelete(${m['מזהה']})"><i class="bi bi-trash"></i></button>
           </div>
         </div>
-        ${m['תרופה'] ? `<div class="mb-2"><span class="badge bg-info">${escHtml(m['תרופה'])}</span></div>` : ''}
+        ${m['סוג'] ? `<div class="mb-1"><span class="badge bg-${m['סוג']==='אלרגיה'?'danger':m['סוג']==='רגישות'?'warning':'info'}">${m['סוג']==='אלרגיה'?'⚠️ ':m['סוג']==='רגישות'?'🌿 ':m['סוג']==='תרופה'?'💊 ':''}${escHtml(m['סוג'])}</span></div>` : ''}
+        ${m['תרופה'] ? `<div class="mb-2"><span class="badge bg-secondary">${escHtml(m['תרופה'])}</span></div>` : ''}
         ${m['מצב_כיום'] ? `<div class="mb-2"><strong class="small">מצב כיום:</strong><br><span class="small">${escHtml(m['מצב_כיום'])}</span></div>` : ''}
         ${m['שיחת_הורים'] ? `<div class="mb-2"><strong class="small">שיחת הורים:</strong><br><span class="small text-muted">${escHtml(m['שיחת_הורים'])}</span></div>` : ''}
         ${m['הערות'] ? `<div class="small text-muted border-top pt-2">${escHtml(m['הערות'])}</div>` : ''}
@@ -77,16 +78,25 @@ function medAddModal(existing) {
   const sortedStu = _medsStudents.slice().sort((a,b) => (a['שם משפחה']||'').localeCompare(b['שם משפחה']||'', 'he'));
   const e = existing || {};
   const html = `<div class="modal fade" id="m-modal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
-    <div class="modal-header"><h5 class="modal-title">${existing ? 'עריכת' : 'רישום'} מעקב רפואי</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-header"><h5 class="modal-title">${existing ? 'עריכת' : 'רישום'} רפואי</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body">
       <div class="mb-2"><label class="form-label">תלמיד</label>
         <select id="ma-student" class="form-select" ${existing ? 'disabled' : ''}>
           ${sortedStu.map(s => `<option value="${s['מזהה']}" ${String(e['תלמיד_מזהה'])===String(s['מזהה'])?'selected':''}>${escHtml((s['שם פרטי']||'')+' '+(s['שם משפחה']||''))}</option>`).join('')}
         </select>
       </div>
-      <div class="mb-2"><label class="form-label">תרופה</label><input id="ma-drug" class="form-control" value="${escHtml(e['תרופה']||'')}" placeholder="ריטלין, קונסרטה..."></div>
-      <div class="mb-2"><label class="form-label">מצב כיום</label><textarea id="ma-state" class="form-control" rows="3">${escHtml(e['מצב_כיום']||'')}</textarea></div>
-      <div class="mb-2"><label class="form-label">שיחת הורים</label><textarea id="ma-talks" class="form-control" rows="3">${escHtml(e['שיחת_הורים']||'')}</textarea></div>
+      <div class="mb-2"><label class="form-label">סוג</label>
+        <select id="ma-type" class="form-select">
+          <option value="תרופה" ${e['סוג']==='תרופה'?'selected':''}>💊 תרופה</option>
+          <option value="אלרגיה" ${e['סוג']==='אלרגיה'?'selected':''}>⚠️ אלרגיה</option>
+          <option value="רגישות" ${e['סוג']==='רגישות'?'selected':''}>🌿 רגישות</option>
+          <option value="מעקב" ${e['סוג']==='מעקב'?'selected':''}>📋 מעקב רפואי</option>
+          <option value="אחר" ${e['סוג']==='אחר'?'selected':''}>📌 אחר</option>
+        </select>
+      </div>
+      <div class="mb-2"><label class="form-label">פירוט (תרופה / חומר אלרגן / מצב)</label><input id="ma-drug" class="form-control" value="${escHtml(e['תרופה']||'')}" placeholder="ריטלין / בוטנים / גלוטן / אבק..."></div>
+      <div class="mb-2"><label class="form-label">מצב כיום / חומרה</label><textarea id="ma-state" class="form-control" rows="3" placeholder="לדוגמה: 1 כדור בוקר. או: רגישות חמורה — לא לתת בוטנים בכלל!">${escHtml(e['מצב_כיום']||'')}</textarea></div>
+      <div class="mb-2"><label class="form-label">שיחת הורים</label><textarea id="ma-talks" class="form-control" rows="2">${escHtml(e['שיחת_הורים']||'')}</textarea></div>
       <div class="mb-2"><label class="form-label">הערות</label><textarea id="ma-notes" class="form-control" rows="2">${escHtml(e['הערות']||'')}</textarea></div>
     </div>
     <div class="modal-footer">
@@ -107,6 +117,7 @@ function medEdit(id) {
 async function medSave(editId) {
   const obj = {
     'תלמיד_מזהה': parseInt(document.getElementById('ma-student').value),
+    'סוג': (document.getElementById('ma-type')||{}).value || 'תרופה',
     'תרופה': document.getElementById('ma-drug').value.trim(),
     'מצב_כיום': document.getElementById('ma-state').value.trim(),
     'שיחת_הורים': document.getElementById('ma-talks').value.trim(),
