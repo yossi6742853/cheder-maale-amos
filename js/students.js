@@ -443,6 +443,8 @@ async function viewStudent(id) {
         <tr><td><strong>שם אם</strong></td><td>${escHtml(s['שם אם']||'-')}</td><td><strong>טלפון אם</strong></td><td>${escHtml(s['טלפון אם']||'-')} ${waButtons(s['טלפון אם'], fullName, 'אמא')}</td></tr>
         <tr><td><strong>שם אב</strong></td><td>${escHtml(s['שם אב']||'-')}</td><td><strong>טלפון אב</strong></td><td>${escHtml(s['טלפון אב']||'-')} ${waButtons(s['טלפון אב'], fullName, 'אבא')}</td></tr>
         <tr><td><strong>כתובת</strong></td><td colspan="3">${escHtml(s['כתובת']||'-')}${s['עיר'] ? ', ' + escHtml(s['עיר']) : ''}</td></tr>
+        ${s['אלרגיה'] ? `<tr class="table-danger"><td><strong>⚠️ אלרגיה / רגישות</strong></td><td colspan="3"><strong>${escHtml(s['אלרגיה'])}</strong></td></tr>` : ''}
+        ${s['הערות רפואיות'] ? `<tr><td><strong>הערות רפואיות</strong></td><td colspan="3">${escHtml(s['הערות רפואיות'])}</td></tr>` : ''}
         ${s['הערות'] ? `<tr><td><strong>הערות</strong></td><td colspan="3">${escHtml(s['הערות'])}</td></tr>` : ''}
       </table>
       <div class="card p-3 mb-3">
@@ -750,6 +752,8 @@ function editStudent(id) {
     document.getElementById('ns-fname2').value = s['שם אב']||'';
     document.getElementById('ns-fphone').value = s['טלפון אב']||'';
     document.getElementById('ns-addr').value = s['כתובת']||'';
+    if (document.getElementById('ns-allergy')) document.getElementById('ns-allergy').value = s['אלרגיה']||'';
+    if (document.getElementById('ns-notes'))   document.getElementById('ns-notes').value   = s['הערות']||'';
     modalEl.dataset.editId = id;
     const headerH5 = modalEl.querySelector('.modal-header h5');
     if (headerH5) headerH5.innerHTML = '<i class="bi bi-pencil"></i> עריכת תלמיד';
@@ -1147,7 +1151,7 @@ async function emailParentSummary(id) {
 
 function exportStudentsCSV() {
   if (typeof XLSX === 'undefined') return _exportStudentsCSV();
-  const cols = ['מזהה','שם פרטי','שם משפחה','גיל','תאריך לידה','מחזור','שם אם','טלפון אם','שם אב','טלפון אב','כתובת','עיר','מספר זהות','תז אב','תז אם','הערות'];
+  const cols = ['מזהה','שם פרטי','שם משפחה','גיל','תאריך לידה','מחזור','שם אם','טלפון אם','שם אב','טלפון אב','כתובת','עיר','מספר זהות','תז אב','תז אם','אלרגיה','הערות רפואיות','הערות'];
   const rows = _students.map(s => {
     const r = {};
     cols.forEach(c => r[c] = s[c] || '');
@@ -1175,37 +1179,101 @@ function _exportStudentsCSV() {
   a.click();
 }
 
+// Bulk import: CSV / XLSX / paste from Sheet
 function importStudentsCSV() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.csv,.txt';
-  input.onchange = async e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const text = (await file.text()).replace(/^﻿/, '');
-    const rows = parseCSV(text);
-    if (rows.length < 2) return alert('הקובץ ריק או לא תקין');
-    const headers = rows[0].map(h => h.trim());
-    let added = 0;
-    let maxId = _students.reduce((m,s) => Math.max(m, parseInt(s['מזהה'])||0), 0);
-    for (let i = 1; i < rows.length; i++) {
-      const values = rows[i];
-      const obj = {};
-      headers.forEach((h,j) => obj[h] = values[j] || '');
-      if (!obj['שם פרטי'] && !obj['שם משפחה']) continue;
-      if (!obj['מזהה']) {
-        maxId += 1;
-        obj['מזהה'] = maxId;
-      }
-      const r = await api('addStudent', [obj]);
-      if (r.ok) added++;
-    }
-    alert(`יובאו ${added} תלמידים`);
-    renderStudents();
-    loadStats();
-  };
-  input.click();
+  const modal = document.createElement('div');
+  modal.className = 'modal fade show';
+  modal.style.cssText = 'display:block;background:rgba(0,0,0,0.5)';
+  modal.innerHTML = `
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">📥 ייבוא תלמידים בכמות</h5>
+          <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+        </div>
+        <div class="modal-body">
+          <ul class="nav nav-tabs mb-3">
+            <li class="nav-item"><a class="nav-link active" data-tab="file" onclick="impTab(event,'file')">📁 קובץ (CSV / Excel)</a></li>
+            <li class="nav-item"><a class="nav-link" data-tab="paste" onclick="impTab(event,'paste')">📋 הדבקה מ-Google Sheets</a></li>
+          </ul>
+          <div id="impFile">
+            <p class="text-muted small">בחר קובץ <code>.csv</code> או <code>.xlsx</code>. השורה הראשונה צריכה להיות שמות עמודות.</p>
+            <input type="file" id="impFileInput" accept=".csv,.xlsx,.xls,.txt" class="form-control mb-2">
+            <details class="small text-muted">
+              <summary>עמודות מומלצות</summary>
+              <code>שם פרטי, שם משפחה, גיל, מחזור, תאריך לידה, שם אם, טלפון אם, שם אב, טלפון אב, כתובת, אלרגיה, הערות</code>
+            </details>
+          </div>
+          <div id="impPaste" style="display:none">
+            <p class="text-muted small">פתח את הקובץ ב-Google Sheets, סמן את כל השורות (כולל כותרות), Ctrl+C, והדבק כאן Ctrl+V:</p>
+            <textarea id="impPasteArea" class="form-control" rows="10" placeholder="שם פרטי&#9;שם משפחה&#9;גיל&#9;מחזור&#10;יוסף&#9;כהן&#9;7&#9;א&#10;..."></textarea>
+            <button class="btn btn-primary mt-2" onclick="doPasteImport()"><i class="bi bi-check"></i> ייבא</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('impFileInput').onchange = doFileImport;
 }
+
+function impTab(ev, name) {
+  ev.preventDefault();
+  document.querySelectorAll('.nav-link[data-tab]').forEach(a => a.classList.toggle('active', a.dataset.tab === name));
+  document.getElementById('impFile').style.display = name === 'file' ? '' : 'none';
+  document.getElementById('impPaste').style.display = name === 'paste' ? '' : 'none';
+}
+
+async function doFileImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  let rows = [];
+  const isXlsx = /\.(xlsx|xls)$/i.test(file.name);
+  try {
+    if (isXlsx) {
+      if (typeof XLSX === 'undefined') return alert('ספריית XLSX לא נטענה');
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    } else {
+      const text = (await file.text()).replace(/^﻿/, '');
+      rows = parseCSV(text);
+    }
+  } catch (err) {
+    return alert('שגיאת קריאת קובץ: ' + err.message);
+  }
+  await runBulkImport(rows);
+}
+
+async function doPasteImport() {
+  const text = document.getElementById('impPasteArea').value.trim();
+  if (!text) return alert('אין מה לייבא');
+  // Tab-separated (typical Google Sheets paste)
+  const rows = text.split(/\r?\n/).map(line => line.split('\t'));
+  await runBulkImport(rows);
+}
+
+async function runBulkImport(rows) {
+  if (!rows || rows.length < 2) return alert('הקובץ ריק או חסר כותרות');
+  const headers = rows[0].map(h => String(h).trim());
+  let added = 0, skipped = 0;
+  let maxId = _students.reduce((m,s) => Math.max(m, parseInt(s['מזהה'])||0), 0);
+  for (let i = 1; i < rows.length; i++) {
+    const values = rows[i];
+    const obj = {};
+    headers.forEach((h,j) => obj[h] = String(values[j] !== undefined ? values[j] : '').trim());
+    if (!obj['שם פרטי'] && !obj['שם משפחה']) { skipped++; continue; }
+    if (!obj['מזהה']) { maxId += 1; obj['מזהה'] = maxId; }
+    const r = await api('addStudent', [obj]);
+    if (r.ok) added++; else skipped++;
+  }
+  alert(`✅ יובאו ${added} תלמידים${skipped ? `\n⏭️ דולגו ${skipped} שורות (ריקות / שגיאה)` : ''}`);
+  document.querySelectorAll('.modal.show').forEach(m => m.remove());
+  renderStudents();
+  loadStats();
+}
+window.impTab = impTab;
+window.doPasteImport = doPasteImport;
 
 // Bug #6 fix: streaming CSV parser that handles quoted multi-line fields
 function parseCSV(text) {
@@ -1410,6 +1478,8 @@ function addStudentModal() {
               <div class="col-6"><label class="form-label small">שם אב</label><input id="ns-fname2" class="form-control"></div>
               <div class="col-6"><label class="form-label small">טלפון אב</label><input id="ns-fphone" class="form-control"></div>
               <div class="col-12"><label class="form-label small">כתובת</label><input id="ns-addr" class="form-control"></div>
+              <div class="col-12"><label class="form-label small text-danger"><i class="bi bi-exclamation-triangle"></i> אלרגיה / רגישות</label><input id="ns-allergy" class="form-control" placeholder="לדוגמה: בוטנים, גלוטן, אבק..."></div>
+              <div class="col-12"><label class="form-label small">הערות</label><textarea id="ns-notes" class="form-control" rows="2"></textarea></div>
             </div>
           </div>
           <div class="modal-footer">
@@ -1437,6 +1507,8 @@ async function saveStudent() {
     'שם אב': document.getElementById('ns-fname2').value,
     'טלפון אב': document.getElementById('ns-fphone').value,
     'כתובת': document.getElementById('ns-addr').value,
+    'אלרגיה': (document.getElementById('ns-allergy')||{}).value || '',
+    'הערות': (document.getElementById('ns-notes')||{}).value || '',
   };
   if (typeof validateStudent === 'function') {
     const v = validateStudent(obj);
