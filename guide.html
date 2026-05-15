@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he" xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <meta name="author" content="בית התלמוד · חיידר מעלה עמוס" />
+  <title>מדריך שימוש למערכת</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+
+<style>
+@page { size: A4; margin: 2cm 1.6cm; }
+* { box-sizing: border-box; }
+body {
+  direction: rtl; text-align: right;
+  font-family: 'David CLM', 'David', 'Heebo', 'Arial', sans-serif;
+  line-height: 1.65; font-size: 11pt; color: #1f2328;
+  max-width: 100%; padding: 0; margin: 0;
+}
+header {
+  text-align: center; padding: 30px 0 24px;
+  border-bottom: 3px solid #0969da; margin-bottom: 28px;
+}
+header h1.title { font-size: 32pt; color: #0969da; margin: 0; border: none; padding: 0; }
+header p.subtitle, header p.author {
+  color: #6e7781; font-size: 13pt; margin: 6px 0 0;
+}
+h1 {
+  color: #fff; background: linear-gradient(90deg, #0969da, #1f6feb);
+  padding: 12px 18px; border-radius: 8px;
+  font-size: 22pt; margin-top: 36px; margin-bottom: 18px;
+  page-break-before: always; page-break-after: avoid;
+}
+h1:first-of-type { page-break-before: auto; }
+h2 {
+  color: #0969da; font-size: 17pt;
+  border-right: 6px solid #1a7f37; padding-right: 14px;
+  margin-top: 30px; margin-bottom: 14px;
+  page-break-after: avoid;
+}
+h3 {
+  color: #bf8700; font-size: 14pt;
+  margin-top: 22px; margin-bottom: 10px;
+  page-break-after: avoid;
+}
+p { margin: 8px 0 12px; }
+ul, ol {
+  padding-right: 28px; padding-left: 0; margin: 8px 0 16px;
+}
+ul ul, ol ol, ul ol, ol ul { margin: 4px 0; }
+li { margin: 6px 0; }
+li::marker { color: #0969da; font-weight: bold; }
+strong { color: #cf222e; font-weight: 700; }
+em { color: #6f42c1; }
+code {
+  background: #f6f8fa; padding: 2px 8px; border-radius: 4px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  direction: ltr; display: inline-block; font-size: 92%;
+  color: #cf222e; border: 1px solid #d0d7de;
+}
+a { color: #0969da; text-decoration: none; }
+a:hover { text-decoration: underline; }
+hr { border: 0; border-top: 2px dashed #d0d7de; margin: 28px 0; }
+blockquote {
+  background: #ddf4ff; border-right: 5px solid #0969da;
+  padding: 12px 18px; margin: 14px 0;
+  border-radius: 4px; color: #0a3069;
+}
+blockquote p { margin: 4px 0; }
+table {
+  width: 100%; border-collapse: collapse;
+  margin: 14px 0; font-size: 10.5pt;
+}
+table th {
+  background: #0969da; color: #fff; padding: 10px 12px;
+  text-align: right; font-weight: 600;
+}
+table td {
+  padding: 8px 12px; border-bottom: 1px solid #d0d7de;
+  background: #fff;
+}
+table tr:nth-child(even) td { background: #f6f8fa; }
+table tr:hover td { background: #fff8c5; }
+
+/* "Step" highlighting: ordered list with numbered circles */
+ol > li {
+  margin: 10px 0;
+}
+
+/* Page break helpers */
+h1 + h2, h1 + p { page-break-before: avoid; }
+
+/* Footer-like ending */
+p:last-child {
+  text-align: center; color: #6e7781;
+  margin-top: 30px; font-style: italic;
+}
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">מדריך שימוש למערכת</h1>
+<p class="subtitle">כל מה שצריך לדעת - בעברית פשוטה</p>
+<p class="author">בית התלמוד · חיידר מעלה עמוס</p>
+</header>
+<h1 id="ברוכים-הבאים">👋 ברוכים הבאים</h1>
+<p>המערכת הזו מנהלת <strong>את כל מה שקורה בחיידר במקום אחד</strong>:
+תלמידים, התנהגות, נוכחות, שיחות עם הורים, מבחנים, רפואי, דוחות וכל
+היתר.</p>
+<p>הכל מסונכרן עם Google Sheets ברקע - כל מה שתעדכן באתר יופיע בשיטס
+אוטומטית, וההפך.</p>
+<hr />
+<h2 id="איך-מתחילים">🚀 איך מתחילים</h2>
+<h3 id="צעד-1-פתיחת-המערכת">צעד 1: פתיחת המערכת</h3>
+<p>פתחו את הקישור הנכון בדפדפן (Chrome / Edge / Firefox).</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>המוסד</th>
+<th>הקישור</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>בית התלמוד</td>
+<td><a
+href="https://beit-hatalmud.github.io/cheder-bht/">beit-hatalmud.github.io/cheder-bht</a></td>
+</tr>
+<tr>
+<td>חיידר מעלה עמוס</td>
+<td><a
+href="https://yossi6742853.github.io/cheder-maale-amos/">yossi6742853.github.io/cheder-maale-amos</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="צעד-2-התחברות">צעד 2: התחברות</h3>
+<ul>
+<li>שם משתמש: <code>admin</code></li>
+<li>סיסמה: <code>6742</code></li>
+</ul>
+<blockquote>
+<p>💡 <strong>טיפ:</strong> אם אתם רואים בשיטס בעמודת סיסמה משהו שמתחיל
+ב-<code>sha256:</code>, <strong>לא לדאוג!</strong> זו הצפנה לאבטחה.
+הסיסמה המקורית עדיין עובדת. תמיד תזינו את הסיסמה המקורית באתר.</p>
+</blockquote>
+<h3 id="צעד-3-עבודה">צעד 3: עבודה</h3>
+<p>המסך הראשי מציג כפתורים גדולים לכל הפעולות. לחיצה על כפתור = פתיחת
+המודול.</p>
+<hr />
+<h1 id="ניהול-תלמידים">👨‍🎓 ניהול תלמידים</h1>
+<h2 id="הוספת-תלמיד-חדש-אחד-אחד">➕ הוספת תלמיד חדש (אחד-אחד)</h2>
+<ol type="1">
+<li>לחצו על הכפתור <strong>“תלמידים”</strong> בדף הבית.</li>
+<li>למעלה מימין יש כפתור <strong>“➕ תלמיד חדש”</strong> - לחצו
+עליו.</li>
+<li>ייפתח טופס. מלאו:
+<ul>
+<li><strong>שם פרטי</strong> (חובה)</li>
+<li><strong>שם משפחה</strong> (חובה)</li>
+<li>גיל</li>
+<li><strong>כיתה</strong> - בחרו מהרשימה (א / ב / ג / ד / ה / ו / ז /
+ח)</li>
+<li>שם אם + טלפון אם</li>
+<li>שם אב + טלפון אב</li>
+<li>כתובת</li>
+<li>🔴 <strong>אלרגיה / רגישות</strong> - אם יש משהו,
+<strong>חובה</strong> לכתוב כאן! (לדוגמה: בוטנים, אבק, ביצים)</li>
+<li>הערות</li>
+</ul></li>
+<li>לחצו <strong>“שמור”</strong>.</li>
+</ol>
+<blockquote>
+<p>✅ הסטטיסטיקה בדף הבית תתעדכן מיד.</p>
+</blockquote>
+<h2 id="הוספת-המוני-תלמידים-יחד">📥 הוספת המוני תלמידים יחד</h2>
+<p>אם יש לכם רשימה של 20-30-100 תלמידים בקובץ Excel או ב-Google Sheets -
+אפשר להעלות הכל בלחיצה אחת.</p>
+<h3 id="דרך-1-קובץ-excel-csv">דרך 1: קובץ Excel / CSV</h3>
+<ol type="1">
+<li>לחצו <strong>“תלמידים”</strong> → <strong>“📥 ייבוא
+CSV”</strong>.</li>
+<li>ייפתח חלון עם שתי לשוניות. השאירו את הלשונית הראשונה <strong>“📁
+קובץ”</strong>.</li>
+<li>לחצו <strong>“בחירת קובץ”</strong> ובחרו את ה-<code>.xlsx</code> או
+<code>.csv</code> שלכם.</li>
+<li>תוך שנייה תופיע <strong>תצוגה מקדימה</strong> - תראו 5 שורות ראשונות
+וכמה תלמידים זוהו.</li>
+<li>בדקו שזה נראה תקין.</li>
+<li>למטה יש כפתור כחול גדול: <strong>“ייבא X תלמידים”</strong> -
+לחצו.</li>
+<li>תוך כמה שניות יסתיים. תקבלו הודעה “✅ נוספו X תלמידים”.</li>
+</ol>
+<h3 id="דרך-2-הדבקה-ישירות-מ-google-sheets">דרך 2: הדבקה ישירות מ-Google
+Sheets</h3>
+<p>זו הדרך הכי קלה אם הנתונים כבר נמצאים ב-Sheet.</p>
+<ol type="1">
+<li>פתחו את ה-Sheet עם רשימת התלמידים (בדפדפן או בטלפון).</li>
+<li>סמנו את כל השורות שאתם רוצים (כולל שורת הכותרות).</li>
+<li>לחצו <code>Ctrl+C</code> (Mac: <code>Cmd+C</code>).</li>
+<li>חזרו לאתר → <strong>“תלמידים”</strong> → <strong>“📥 ייבוא
+CSV”</strong>.</li>
+<li>בחרו את הלשונית השנייה: <strong>“📋 הדבקה מ-Google
+Sheets”</strong>.</li>
+<li>לחצו בתיבת הטקסט הגדולה והקליקו <code>Ctrl+V</code>. הטקסט יודבק
+שם.</li>
+<li>לחצו על הכפתור <strong>“⬇️ זיהוי שורות מהטקסט”</strong>.</li>
+<li>תופיע תצוגה מקדימה כמו בדרך הראשונה.</li>
+<li>לחצו <strong>“ייבא X תלמידים”</strong>.</li>
+</ol>
+<blockquote>
+<p>💡 <strong>חשוב:</strong> השורה הראשונה חייבת להיות <strong>כותרות
+עמודות</strong>. מילים כמו “שם פרטי”, “שם משפחה”, “גיל” וכו’.</p>
+<p>📝 <strong>עמודות מומלצות:</strong> שם פרטי, שם משפחה, גיל, מחזור,
+תאריך לידה, שם אם, טלפון אם, שם אב, טלפון אב, כתובת, אלרגיה, הערות</p>
+</blockquote>
+<h2 id="עריכת-תלמיד-כרטיס-תלמיד">✏️ עריכת תלמיד / כרטיס תלמיד</h2>
+<ul>
+<li>לחצו על שם התלמיד ברשימה → ייפתח כרטיס מלא עם כל הפרטים.</li>
+<li>בכרטיס תראו: פרטים, אירועי התנהגות אחרונים, מעקב רפואי, שיחות,
+ועוד.</li>
+<li>כפתור <strong>“📝 עריכה”</strong> למעלה - לפתיחת הטופס לעריכה.</li>
+<li>כפתור <strong>WhatsApp ירוק</strong> ליד מספר הטלפון - שליחת הודעה
+ישירה לאמא או אבא.</li>
+</ul>
+<hr />
+<h1 id="מעקב-התנהגות">📋 מעקב התנהגות</h1>
+<h2 id="אירוע-התנהגות-חדש">➕ אירוע התנהגות חדש</h2>
+<ol type="1">
+<li><strong>“מעקב התנהגות”</strong> → <strong>“➕ אירוע
+חדש”</strong>.</li>
+<li>בחרו תלמיד מהרשימה.</li>
+<li>בחרו <strong>קטגוריה</strong>:
+<ul>
+<li>התנהגות (בכיתה)</li>
+<li>דיבור עם הורים</li>
+<li>אסיפת הורים</li>
+<li>מוגנות</li>
+<li>חינוך אישי</li>
+<li>חברה</li>
+<li>לימודים</li>
+<li>בריאות</li>
+</ul></li>
+<li>בחרו <strong>חומרה</strong>: 🟢 נמוכה / 🟡 בינונית / 🔴 גבוהה.</li>
+<li>כתבו תיאור מפורט.</li>
+<li>לחצו <strong>“שמור”</strong>.</li>
+</ol>
+<blockquote>
+<p>📊 הסטטיסטיקה תתעדכן אוטומטית והאירוע יופיע ב”פעילות אחרונה” בדף
+הבית.</p>
+</blockquote>
+<hr />
+<h1 id="רפואי---אלרגיות-רגישויות-כדורים">🏥 רפואי - אלרגיות, רגישויות,
+כדורים</h1>
+<p>זה המודול שמנהל את כל המידע הרפואי על התלמידים - <strong>לא רק
+כדורים</strong>.</p>
+<h2 id="רישום-רפואי-חדש">➕ רישום רפואי חדש</h2>
+<ol type="1">
+<li><strong>“רפואי”</strong> → <strong>“➕ רישום חדש”</strong>.</li>
+<li>בחרו תלמיד.</li>
+<li>בחרו <strong>סוג</strong>:
+<ul>
+<li>💊 <strong>תרופה</strong> (ריטלין / קונסרטה / וכו’)</li>
+<li>⚠️ <strong>אלרגיה</strong> - <strong>חמורה!</strong> חובה לרשום מה
+(בוטנים / גלוטן / אבק)</li>
+<li>🌿 <strong>רגישות</strong> - קלה יותר</li>
+<li>📋 <strong>מעקב רפואי</strong> כללי</li>
+<li>📌 <strong>אחר</strong></li>
+</ul></li>
+<li><strong>פירוט</strong>: מה התרופה? מה החומר האלרגן? לדוגמה: “בוטנים”
+/ “ריטלין 10 מ”ג”</li>
+<li><strong>מצב כיום</strong>: לדוגמה: “1 כדור בוקר ו-1 כדור בצהריים”.
+או: <strong>“רגישות חמורה - לא לתת בוטנים בכלל!”</strong></li>
+<li><strong>שיחת הורים</strong>: מתי דיברתם לאחרונה, מה סוכם.</li>
+<li>הערות.</li>
+<li><strong>“שמור”</strong>.</li>
+</ol>
+<blockquote>
+<p>🚨 בכרטיס התלמיד יוצג בולט באדום אם יש אלרגיה. <strong>אל
+תתעלמו</strong> מזה.</p>
+</blockquote>
+<hr />
+<h1 id="נוכחות">✅ נוכחות</h1>
+<ol type="1">
+<li><strong>“נוכחות”</strong> → בחרו כיתה ותאריך.</li>
+<li>לכל תלמיד סמנו: 🟢 נוכח / 🔴 נעדר / 🟡 חולה.</li>
+<li>שומרים.</li>
+</ol>
+<blockquote>
+<p>💡 ניתן לראות סטטיסטיקת נוכחות חודשית של כל תלמיד בכרטיס שלו.</p>
+</blockquote>
+<hr />
+<h1 id="שיחות-עם-תלמידים">💬 שיחות עם תלמידים</h1>
+<ol type="1">
+<li><strong>“שיחות”</strong> → <strong>“➕ שיחה חדשה”</strong>.</li>
+<li>בחרו תלמיד.</li>
+<li>נושא השיחה.</li>
+<li>רב מטפל.</li>
+<li>סיכום מפורט.</li>
+<li><strong>“שמור”</strong>.</li>
+</ol>
+<blockquote>
+<p>⚠️ המערכת <strong>תתריע</strong> על תלמידים שלא דיברו איתם הרבה
+זמן.</p>
+</blockquote>
+<hr />
+<h1 id="אסיפות-הורים">👨‍👩‍👦 אסיפות הורים</h1>
+<p>תיעוד פגישות עם הורים.</p>
+<ol type="1">
+<li><strong>“אסיפות”</strong> → <strong>“➕ אסיפה חדשה”</strong>.</li>
+<li>תלמיד, תאריך, נושא, משתתפים.</li>
+<li>סיכום הפגישה.</li>
+<li>הערות + תאריך לפגישה הבאה.</li>
+</ol>
+<blockquote>
+<p>🔔 המערכת מזכירה אסיפות שצריך לקיים בעוד יום-יומיים.</p>
+</blockquote>
+<hr />
+<h1 id="מבחנים">📝 מבחנים</h1>
+<ol type="1">
+<li><strong>“מבחנים”</strong> → <strong>“➕ מבחן חדש”</strong>.</li>
+<li>בחרו פרשה / נושא.</li>
+<li>מזינים ציון לכל תלמיד.</li>
+<li>שומרים.</li>
+</ol>
+<blockquote>
+<p>📈 בכרטיס תלמיד תראו <strong>גרף ציונים</strong> לאורך זמן.</p>
+</blockquote>
+<hr />
+<h1 id="דוחות-pdf">📄 דוחות PDF</h1>
+<ol type="1">
+<li><strong>“דוחות”</strong> → בחרו סוג:
+<ul>
+<li>דוח <strong>תלמיד יחיד</strong> - כל המידע על תלמיד מסוים.</li>
+<li>דוח <strong>כיתה שלמה</strong> - סיכום פעילות הכיתה.</li>
+<li>דוח <strong>בית ספר</strong> - סטטיסטיקה כללית.</li>
+</ul></li>
+<li>בחרו תקופה (חודש / רבעון / שנה).</li>
+<li>לחצו <strong>“📥 הורד PDF”</strong>.</li>
+</ol>
+<blockquote>
+<p>💼 הדוח מקצועי, מוכן להדפסה או שליחה במייל.</p>
+</blockquote>
+<hr />
+<h1 id="הגדרות-אדמין-בלבד">⚙️ הגדרות (אדמין בלבד)</h1>
+<h2 id="ניהול-משתמשים">ניהול משתמשים</h2>
+<ul>
+<li><strong>“הגדרות”</strong> → <strong>“משתמשים”</strong>.</li>
+<li><strong>➕ משתמש חדש</strong>: שם משתמש, סיסמה ראשונית, תפקיד (מנהל
+/ רב / מורה), הרשאות.</li>
+<li><strong>🔑 איפוס סיסמה</strong>: אם משתמש שכח - אדמין יכול ליצור לו
+סיסמה חדשה.</li>
+<li><strong>🚫 הסרת משתמש</strong> - מי שכבר לא עובד.</li>
+</ul>
+<h2 id="ניהול-קטגוריות-התנהגות">ניהול קטגוריות התנהגות</h2>
+<ul>
+<li>מוסיפים / משנים שמות קטגוריות.</li>
+</ul>
+<h2 id="ניהול-כיתות">ניהול כיתות</h2>
+<ul>
+<li>מוסיפים / משנים שמות כיתות.</li>
+</ul>
+<hr />
+<h1 id="טיפים-שווה-לדעת">💡 טיפים שווה לדעת</h1>
+<h2 id="קיצורי-דרך">קיצורי דרך</h2>
+<ul>
+<li><code>/</code> - חיפוש מהיר בכל המערכת (תלמיד / אירוע).</li>
+<li><code>Esc</code> - חזרה לדף הבית.</li>
+<li><code>Ctrl+F5</code> - <strong>רענון מלא</strong>. אם משהו לא נראה
+מעודכן - תמיד תנסו את זה קודם.</li>
+</ul>
+<h2 id="מצב-לילה-כהה">מצב לילה (כהה)</h2>
+<ul>
+<li>בפינה ימנית למעלה יש 🌙 - לחיצה תהפוך את האתר לכהה. נוח
+לעיניים.</li>
+</ul>
+<h2 id="גיבוי">גיבוי</h2>
+<ul>
+<li><strong>הכל נשמר אוטומטית בשיטס.</strong> גם אם המחשב יורד.</li>
+<li>בכל זמן אפשר לפתוח את ה-Sheet ישירות מ-Google Drive ולראות /
+לעדכן.</li>
+</ul>
+<h2 id="מובייל">מובייל</h2>
+<ul>
+<li>האתר עובד מצוין בטלפון ובטאבלט.</li>
+<li>ניתן להוסיף אירועים מהר מהשטח.</li>
+</ul>
+<hr />
+<h1 id="אם-משהו-לא-עובד">❓ אם משהו לא עובד</h1>
+<ol type="1">
+<li><strong>רעננו את הדף</strong> - <code>Ctrl+F5</code> (Windows) או
+<code>Cmd+Shift+R</code> (Mac).</li>
+<li><strong>נקו cache</strong> - לפעמים הדפדפן מציג גרסה ישנה.</li>
+<li><strong>חיבור אינטרנט</strong> - האתר זקוק לחיבור פעיל.</li>
+<li><strong>שלחו לי מייל</strong> - אם לא נפתר, כתבו לי בדיוק:
+<ul>
+<li>באיזה עמוד הייתם</li>
+<li>על מה לחצתם</li>
+<li>מה ראיתם (אפשר צילום מסך)</li>
+</ul></li>
+</ol>
+<blockquote>
+<p>🛠️ אני מתקן ומשדרג את המערכת <strong>כל הזמן</strong>, על פי המשוב
+שלכם.</p>
+</blockquote>
+<hr />
+<h1 id="פרטי-קשר">📞 פרטי קשר</h1>
+<p>לבעיות / שאלות / הצעות שיפור:</p>
+<ul>
+<li><strong>דוא”ל:</strong> 6742853@gmail.com</li>
+<li><strong>WhatsApp:</strong> דרך הקבוצה</li>
+</ul>
+<hr />
+<p><em>בהצלחה — שיהיה כלי עזר אמיתי בעבודה היומיומית בחיידר.</em></p>
+<p><strong>יוסף שניידר</strong></p>
+</body>
+</html>
