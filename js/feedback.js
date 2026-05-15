@@ -123,7 +123,7 @@ async function loadFeedbackList() {
       return;
     }
     el.innerHTML = '<table class="table table-sm table-hover mb-0"><thead><tr>' +
-      '<th>תאריך</th><th>סוג</th><th>דחיפות</th><th>כותרת</th><th>שולח</th><th>סטטוס</th><th>סיכום תיקון</th>' +
+      '<th>תאריך</th><th>סוג</th><th>דחיפות</th><th>כותרת</th><th>שולח</th><th>סטטוס</th><th>סיכום תיקון</th><th>פעולות</th>' +
       '</tr></thead><tbody>' + rows.map(r => {
         const ts = r['חותמת זמן'];
         const tsStr = ts ? new Date(ts).toLocaleString('he-IL') : '';
@@ -133,6 +133,14 @@ async function loadFeedbackList() {
                           : status === 'נדחה' ? '<span class="badge bg-secondary">🚫 נדחה</span>'
                           : '<span class="badge bg-primary">📮 פתוח</span>';
         const urgIcon = r['דחיפות']==='קריטי' ? '🔴' : r['דחיפות']==='דחוף' ? '🟡' : '🟢';
+        const fid = r['מזהה'];
+        const isOpen = (status === 'פתוח' || status === 'בטיפול');
+        const actionsHtml = isOpen ? `
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-success" onclick="resolveFeedbackPrompt('${fid}','${(r['כותרת']||'').replace(/'/g,'&#39;')}','תוקן')" title="סמן כתוקן">✓</button>
+            <button class="btn btn-outline-warning" onclick="resolveFeedbackPrompt('${fid}','${(r['כותרת']||'').replace(/'/g,'&#39;')}','בטיפול')" title="בטיפול">🔧</button>
+            <button class="btn btn-outline-secondary" onclick="resolveFeedbackPrompt('${fid}','${(r['כותרת']||'').replace(/'/g,'&#39;')}','נדחה')" title="דחה">✗</button>
+          </div>` : `<span class="text-muted small">סגור</span>`;
         return `<tr>
           <td class="small">${escHtml(tsStr)}</td>
           <td class="small">${escHtml(r['סוג']||'')}</td>
@@ -141,6 +149,7 @@ async function loadFeedbackList() {
           <td class="small">${escHtml(r['שולח']||'')}</td>
           <td>${statusBadge}</td>
           <td class="small">${escHtml((r['סיכום תיקון']||'').slice(0,120))}</td>
+          <td>${actionsHtml}</td>
         </tr>`;
       }).join('') + '</tbody></table>';
   } catch (e) {
@@ -148,3 +157,33 @@ async function loadFeedbackList() {
   }
 }
 window.loadFeedbackList = loadFeedbackList;
+
+async function resolveFeedbackPrompt(feedbackId, title, status) {
+  const labels = {'תוקן':'תוקן (יישלח מייל למבקש)', 'בטיפול':'בטיפול', 'נדחה':'נדחה'};
+  const summary = prompt(`עדכון לבקשה: "${title}"\nסטטוס חדש: ${labels[status]||status}\n\nכתוב סיכום (יישלח למבקש במייל אם הסטטוס "תוקן"):`, '');
+  if (summary === null) return;  // user cancelled
+  try {
+    const r = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', mode: 'cors',
+      headers: {'Content-Type':'application/x-www-form-urlencoded'},
+      body: new URLSearchParams({
+        action: 'cheder_resolveFeedback',
+        token: AGENT_TOKEN,
+        instance: INSTANCE,
+        feedbackId, status,
+        summary: summary || '(ללא סיכום)',
+        handler: (currentUser && currentUser.username) || 'admin',
+      }).toString()
+    });
+    const d = await r.json();
+    if (d.ok) {
+      alert(`✅ הסטטוס עודכן ל"${status}".${status==='תוקן' ? '\nנשלח מייל למבקש.' : ''}`);
+      loadFeedbackList();
+    } else {
+      alert('שגיאה: ' + (d.error||'לא ידוע'));
+    }
+  } catch (e) {
+    alert('שגיאת רשת: ' + e.message);
+  }
+}
+window.resolveFeedbackPrompt = resolveFeedbackPrompt;
