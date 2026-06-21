@@ -1,0 +1,56 @@
+{
+  "name": "חדר בית התלמוד",
+  "short_name": "חיידר בה״ת",
+  "description": "מערכת מעקב התנהגות ולמידה לבית התלמוד מעלה עמוס",
+  "start_url": "/cheder-bht/",
+  "scope": "/cheder-bht/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "lang": "he-IL",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "img/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "התנהגות",
+      "short_name": "התנהגות",
+      "description": "פתח מעקב התנהגות מהיר",
+      "url": "/cheder-bht/#behavior",
+      "icons": [{ "src": "img/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "נוכחות",
+      "short_name": "נוכחות",
+      "description": "רישום נוכחות",
+      "url": "/cheder-bht/#attendance",
+      "icons": [{ "src": "img/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "תלמידים",
+      "short_name": "תלמידים",
+      "description": "רשימת תלמידים",
+      "url": "/cheder-bht/#students",
+      "icons": [{ "src": "img/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

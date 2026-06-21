@@ -1,0 +1,39 @@
+{
+  "_comment": "רשימת משתמשים מורשים לכניסה דרך Google. אדמין יכול לערוך מהאתר. השדה permissions = רשימת מסכים מופרדת בפסיק, או 'all' לגישה מלאה.",
+  "_last_updated": "2026-06-17",
+  "_groups": {
+    "מנהל": "all",
+    "רב": "home,students,behavior,reading,writing,lessonsKlein,tasks,projects,conversations,calendar,classview,reports,attendance,tests",
+    "מורה": "home,students,behavior,tasks,attendance,tests,reading,writing,reports",
+    "מזכירות": "home,students,staff,calendar,signatures,reports,settings",
+    "צוות_שירותים": "home,tasks,signatures",
+    "הורה": "home,students,behavior,conversations"
+  },
+  "users": [
+    {
+      "email": "6742853@gmail.com",
+      "name": "יוסף שניידר",
+      "role": "מנהל",
+      "permissions": "all",
+      "active": true,
+      "added": "2026-06-17"
+    },
+    {
+      "email": "6787012@gmail.com",
+      "name": "יוסף שניידר (מכינה)",
+      "role": "מנהל",
+      "permissions": "all",
+      "active": true,
+      "added": "2026-06-17"
+    },
+    {
+      "email": "tt0527686018@gmail.com",
+      "name": "הרב אהוד ירושלמי",
+      "role": "מנהל",
+      "permissions": "all",
+      "active": true,
+      "added": "2026-06-17",
+      "note": "מנהל חינוכי, מכינה לצעירים"
+    }
+  ]
+}
