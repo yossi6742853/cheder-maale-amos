@@ -1,0 +1,129 @@
+/* behavior-pro.css — professional UI for tasks/projects/forms. 2026-05-21 */
+
+/* Tabs */
+#behavior-tabs.nav-pills .nav-link {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 10px;
+  transition: all .2s;
+  color: #4b5563;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  margin: 2px;
+}
+#behavior-tabs.nav-pills .nav-link:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+}
+#behavior-tabs.nav-pills .nav-link.active {
+  background: linear-gradient(135deg, #0066cc 0%, #007aff 100%);
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+  color: #fff;
+}
+
+/* Task/Project cards */
+#behavior-tab-content .card {
+  transition: transform .2s, box-shadow .2s;
+}
+#behavior-tab-content .card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* Kanban columns */
+.tasks-col, #proj-container .col-md-4 > .card {
+  min-height: 200px;
+}
+
+/* Progress bars - animated */
+#behavior-tab-content .progress-bar {
+  background: linear-gradient(90deg, #16a34a 0%, #22c55e 100%);
+  position: relative;
+  overflow: hidden;
+}
+#behavior-tab-content .progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: progress-shimmer 2s linear infinite;
+}
+@keyframes progress-shimmer {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+/* Badges with subtle shadow */
+#behavior-tab-content .badge {
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* Action button bar */
+#b-actions .btn {
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: all .2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+#b-actions .btn-success {
+  background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+  border: 0;
+}
+#b-actions .btn-success:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.4);
+}
+
+/* Pending approval banner (events tab) - prominent */
+#behavior-tab-content > .card.border-warning {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+  border: 2px solid #f59e0b !important;
+  border-radius: 14px;
+  position: relative;
+  overflow: hidden;
+}
+#behavior-tab-content > .card.border-warning::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #f59e0b, #ef4444, #f59e0b);
+  animation: warning-bar 3s linear infinite;
+}
+@keyframes warning-bar {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+
+/* View toggle buttons */
+.btn-group .btn-outline-primary {
+  font-size: 12px;
+  padding: 4px 12px;
+}
+.btn-group .btn-outline-primary.active {
+  background: linear-gradient(135deg, #0066cc 0%, #007aff 100%);
+  border-color: transparent;
+  color: #fff;
+}
+
+/* Tab badges */
+#behavior-tabs .badge {
+  font-size: 10px;
+  padding: 2px 7px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  #behavior-tabs.nav-pills .nav-link { font-size: 12px; padding: 6px 10px; }
+  #behavior-tab-content .card { padding: 12px !important; }
+}

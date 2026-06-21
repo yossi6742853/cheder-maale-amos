@@ -1,0 +1,105 @@
+/* dark-mode.css — global dark mode. 2026-05-21 */
+
+html.dark-mode {
+  color-scheme: dark;
+}
+html.dark-mode body {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+html.dark-mode .card,
+html.dark-mode .modal-content,
+html.dark-mode .dropdown-menu {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+html.dark-mode .form-control,
+html.dark-mode .form-select,
+html.dark-mode textarea {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+html.dark-mode .form-control:focus,
+html.dark-mode .form-select:focus {
+  background: #1e293b !important;
+  border-color: #3b82f6 !important;
+  color: #e2e8f0 !important;
+}
+html.dark-mode .table {
+  color: #e2e8f0 !important;
+}
+html.dark-mode .table-light,
+html.dark-mode .table thead {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+html.dark-mode .btn-outline-secondary {
+  color: #cbd5e1;
+  border-color: #475569;
+}
+html.dark-mode .btn-outline-primary {
+  color: #60a5fa;
+  border-color: #3b82f6;
+}
+html.dark-mode .text-muted {
+  color: #94a3b8 !important;
+}
+html.dark-mode .badge.bg-light {
+  background: #334155 !important;
+  color: #e2e8f0 !important;
+}
+html.dark-mode .border {
+  border-color: #334155 !important;
+}
+html.dark-mode .navbar,
+html.dark-mode header {
+  background: #1e293b !important;
+}
+html.dark-mode .progress {
+  background: #334155 !important;
+}
+html.dark-mode #whats-new-sidebar {
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+}
+html.dark-mode #whats-new-sidebar .wn-card {
+  background: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+html.dark-mode #whats-new-sidebar .wn-card.wn-new {
+  background: linear-gradient(135deg, #422006 0%, #1e293b 100%) !important;
+}
+
+/* Dark-mode toggle button */
+.bht-dark-toggle {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  cursor: pointer;
+  font-size: 18px;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bht-dark-toggle:hover { background: #f3f4f6; }
+html.dark-mode .bht-dark-toggle {
+  background: #1e293b;
+  color: #fde047;
+  border-color: #475569;
+}
+
+/* Filter pills active state */
+#quick-filters .btn.active {
+  background: linear-gradient(135deg, #0066cc 0%, #007aff 100%) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.3);
+}

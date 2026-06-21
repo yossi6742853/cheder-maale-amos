@@ -1,0 +1,165 @@
+/* ================================================================
+ * theme.css — Design System Tokens
+ * Cheder-BHT Production Design System
+ * ================================================================ */
+
+:root {
+  /* === BRAND COLORS === */
+  --bht-primary: #1e3a8a;
+  --bht-primary-light: #3b82f6;
+  --bht-primary-lighter: #dbeafe;
+  --bht-primary-dark: #1e293b;
+
+  --bht-accent: #fbbf24;
+  --bht-accent-light: #fef3c7;
+  --bht-accent-dark: #d97706;
+
+  /* === SEMANTIC COLORS === */
+  --bht-success: #22c55e;
+  --bht-success-light: #dcfce7;
+  --bht-warning: #fbbf24;
+  --bht-warning-light: #fef3c7;
+  --bht-danger: #dc2626;
+  --bht-danger-light: #fee2e2;
+  --bht-info: #3b82f6;
+  --bht-info-light: #dbeafe;
+
+  /* === NEUTRAL COLORS === */
+  --bht-gray-50: #f9fafb;
+  --bht-gray-100: #f3f4f6;
+  --bht-gray-200: #e5e7eb;
+  --bht-gray-300: #d1d5db;
+  --bht-gray-400: #9ca3af;
+  --bht-gray-500: #6b7280;
+  --bht-gray-600: #4b5563;
+  --bht-gray-700: #374151;
+  --bht-gray-800: #1f2937;
+  --bht-gray-900: #111827;
+
+  /* === SPACING (4px scale) === */
+  --bht-space-1: 4px;
+  --bht-space-2: 8px;
+  --bht-space-3: 12px;
+  --bht-space-4: 16px;
+  --bht-space-5: 20px;
+  --bht-space-6: 24px;
+  --bht-space-8: 32px;
+  --bht-space-10: 40px;
+
+  /* === RADIUS === */
+  --bht-radius-sm: 4px;
+  --bht-radius-md: 8px;
+  --bht-radius-lg: 12px;
+  --bht-radius-xl: 16px;
+  --bht-radius-pill: 999px;
+
+  /* === SHADOWS === */
+  --bht-shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --bht-shadow-md: 0 2px 4px rgba(0,0,0,0.06), 0 4px 8px rgba(0,0,0,0.04);
+  --bht-shadow-lg: 0 4px 12px rgba(0,0,0,0.08), 0 8px 20px rgba(0,0,0,0.05);
+  --bht-shadow-xl: 0 8px 24px rgba(0,0,0,0.12), 0 16px 32px rgba(0,0,0,0.08);
+
+  /* === FONTS === */
+  --bht-font-base: 'Heebo', 'Arial', sans-serif;
+  --bht-font-mono: 'Courier New', monospace;
+  --bht-font-size-xs: 11px;
+  --bht-font-size-sm: 12px;
+  --bht-font-size-base: 14px;
+  --bht-font-size-md: 15px;
+  --bht-font-size-lg: 17px;
+  --bht-font-size-xl: 20px;
+  --bht-font-size-2xl: 24px;
+
+  /* === BREAKPOINTS (use in media queries) === */
+  /* --bht-mobile: max-width: 640px */
+  /* --bht-tablet: max-width: 768px */
+  /* --bht-desktop: max-width: 1024px */
+
+  /* === TRANSITIONS === */
+  --bht-transition-fast: 0.15s ease;
+  --bht-transition-base: 0.25s ease;
+  --bht-transition-slow: 0.4s ease;
+
+  /* === Z-INDEX SCALE === */
+  --bht-z-nav: 100;
+  --bht-z-sticky: 500;
+  --bht-z-overlay: 9990;
+  --bht-z-modal: 9995;
+  --bht-z-toast: 9998;
+  --bht-z-top: 9999;
+}
+
+/* === DARK MODE === */
+[data-theme="dark"] {
+  --bht-primary: #60a5fa;
+  --bht-primary-light: #93c5fd;
+  --bht-primary-lighter: #1e3a8a;
+  --bht-gray-50: #111827;
+  --bht-gray-100: #1f2937;
+  --bht-gray-200: #374151;
+  --bht-gray-800: #f3f4f6;
+  --bht-gray-900: #ffffff;
+}
+
+/* === GLOBAL DEFAULTS === */
+body {
+  font-family: var(--bht-font-base);
+  font-size: var(--bht-font-size-base);
+  color: var(--bht-gray-900);
+  background: var(--bht-gray-50);
+}
+
+/* === COMMON COMPONENTS (use these instead of inline styles) === */
+
+.bht-stack-sm { display: flex; flex-direction: column; gap: var(--bht-space-2); }
+.bht-stack-md { display: flex; flex-direction: column; gap: var(--bht-space-4); }
+.bht-stack-lg { display: flex; flex-direction: column; gap: var(--bht-space-6); }
+
+.bht-row { display: flex; gap: var(--bht-space-2); align-items: center; }
+.bht-row-spread { display: flex; gap: var(--bht-space-2); justify-content: space-between; align-items: center; }
+
+.bht-card {
+  background: #fff;
+  border-radius: var(--bht-radius-lg);
+  box-shadow: var(--bht-shadow-md);
+  padding: var(--bht-space-4);
+  border: 1px solid var(--bht-gray-200);
+}
+.bht-card-elevated {
+  background: #fff;
+  border-radius: var(--bht-radius-lg);
+  box-shadow: var(--bht-shadow-lg);
+  padding: var(--bht-space-4);
+}
+
+.bht-header-bar {
+  background: linear-gradient(135deg, var(--bht-primary), var(--bht-primary-light));
+  color: #fff;
+  padding: var(--bht-space-3) var(--bht-space-4);
+  border-radius: var(--bht-radius-md) var(--bht-radius-md) 0 0;
+  font-weight: 600;
+}
+
+.bht-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bht-gray-400);
+}
+.bht-status-dot.live { background: var(--bht-success); box-shadow: 0 0 6px var(--bht-success); }
+.bht-status-dot.offline { background: var(--bht-danger); }
+
+/* === PRINT === */
+@media print {
+  .bht-no-print { display: none !important; }
+  body { background: #fff !important; }
+}
+
+/* === ACCESSIBILITY === */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

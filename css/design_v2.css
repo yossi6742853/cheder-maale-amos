@@ -1,0 +1,197 @@
+/* design_v2.css — modern refined design layer over Bootstrap.
+   Loaded LAST so its rules win for visual polish without breaking
+   the existing markup or behavior. */
+
+:root {
+  --bht-grad-primary: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  --bht-grad-success: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  --bht-grad-warm:    linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  --bht-shadow-sm: 0 1px 3px rgba(15, 23, 42, .06);
+  --bht-shadow-md: 0 4px 14px rgba(15, 23, 42, .08);
+  --bht-shadow-lg: 0 12px 32px rgba(15, 23, 42, .12);
+  --bht-radius-sm: 10px;
+  --bht-radius-md: 14px;
+  --bht-radius-lg: 18px;
+  --bht-transition: cubic-bezier(.4, 0, .2, 1);
+}
+
+/* Subtle background gradient on body */
+body {
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+[data-theme="dark"] body {
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+}
+
+/* Refined card defaults */
+.card {
+  border-radius: var(--bht-radius-md);
+  border: 1px solid rgba(226, 232, 240, .8);
+  box-shadow: var(--bht-shadow-sm);
+  transition: box-shadow .25s var(--bht-transition), transform .15s var(--bht-transition);
+}
+.card:hover { box-shadow: var(--bht-shadow-md); }
+[data-theme="dark"] .card {
+  background: rgba(30, 41, 59, .65);
+  border-color: rgba(51, 65, 85, .8);
+  backdrop-filter: blur(8px);
+}
+
+/* Refined home tiles */
+.card-tile {
+  background: #fff;
+  border-radius: var(--bht-radius-md);
+  padding: 1.5rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s var(--bht-transition);
+  border: 1px solid rgba(226, 232, 240, .8);
+  position: relative;
+  overflow: hidden;
+}
+.card-tile::before {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0) 0%, rgba(37, 99, 235, .04) 100%);
+  opacity: 0; transition: opacity .25s var(--bht-transition);
+}
+.card-tile:hover { transform: translateY(-4px); box-shadow: var(--bht-shadow-md); border-color: #cbd5e1; }
+.card-tile:hover::before { opacity: 1; }
+.card-tile:active { transform: translateY(-2px); }
+.card-tile i.fs-1 { display: block; margin: 0 auto .5rem; transition: transform .2s var(--bht-transition); }
+.card-tile:hover i.fs-1 { transform: scale(1.1) rotate(-3deg); }
+[data-theme="dark"] .card-tile { background: rgba(30, 41, 59, .85); border-color: rgba(51, 65, 85, .8); }
+[data-theme="dark"] .card-tile:hover { border-color: #475569; }
+
+/* Buttons with refined hover */
+.btn {
+  border-radius: 10px;
+  font-weight: 500;
+  transition: all .15s var(--bht-transition);
+}
+.btn-primary {
+  background: var(--bht-grad-primary);
+  border: 0;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, .25);
+}
+.btn-primary:hover {
+  background: var(--bht-grad-primary);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, .35);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); }
+.btn-success {
+  background: var(--bht-grad-success);
+  border: 0;
+  box-shadow: 0 4px 12px rgba(22, 163, 74, .25);
+}
+.btn-success:hover {
+  background: var(--bht-grad-success);
+  box-shadow: 0 6px 18px rgba(22, 163, 74, .35);
+  transform: translateY(-1px);
+}
+
+/* Topbar polish */
+.navbar { backdrop-filter: blur(12px); background: rgba(30, 58, 138, .96) !important; }
+.brand-text { letter-spacing: -.01em; }
+
+/* Form controls refinement */
+.form-control, .form-select {
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  padding: .55rem .85rem;
+  transition: border-color .2s var(--bht-transition), box-shadow .2s var(--bht-transition);
+}
+.form-control:focus, .form-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, .15);
+  outline: 0;
+}
+[data-theme="dark"] .form-control, [data-theme="dark"] .form-select {
+  background: rgba(30, 41, 59, .9); color: #e2e8f0; border-color: #334155;
+}
+
+/* Login screen polish */
+#page-login .card {
+  border-radius: var(--bht-radius-lg);
+  box-shadow: var(--bht-shadow-lg);
+  border: 0;
+  background: rgba(255, 255, 255, .95);
+  backdrop-filter: blur(10px);
+}
+#page-login h3 {
+  font-weight: 700;
+  letter-spacing: -.02em;
+  background: var(--bht-grad-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+[data-theme="dark"] #page-login .card { background: rgba(30, 41, 59, .85); }
+
+/* Badges */
+.badge { border-radius: 8px; font-weight: 500; letter-spacing: .01em; }
+
+/* Modal refinements */
+.modal-content {
+  border-radius: var(--bht-radius-lg);
+  border: 0;
+  box-shadow: var(--bht-shadow-lg);
+  overflow: hidden;
+}
+.modal-header {
+  background: linear-gradient(135deg, #eef2ff 0%, #fff 100%);
+  border-bottom: 1px solid rgba(226, 232, 240, .8);
+}
+[data-theme="dark"] .modal-content { background: rgba(30, 41, 59, .95); }
+[data-theme="dark"] .modal-header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-bottom-color: rgba(51, 65, 85, .8); }
+
+/* Tables polish */
+.table thead { background: #f8fafc; }
+.table thead th { font-weight: 600; color: #475569; border-bottom-width: 1px !important; padding: .85rem; }
+.table tbody tr { transition: background .15s ease; }
+.table tbody tr:hover { background: rgba(37, 99, 235, .04) !important; }
+[data-theme="dark"] .table thead { background: rgba(15, 23, 42, .65); }
+[data-theme="dark"] .table thead th { color: #cbd5e1; }
+[data-theme="dark"] .table tbody tr:hover { background: rgba(96, 165, 250, .08) !important; }
+
+/* Home group headers */
+.home-group-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: #0f172a;
+  border-right: 4px solid;
+  padding-right: 14px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(90deg, rgba(37, 99, 235, .04) 0%, rgba(255, 255, 255, 0) 100%);
+  padding-block: 6px;
+  border-radius: 0 8px 8px 0;
+}
+.home-group-1 .home-group-title { border-color: #2563eb }
+.home-group-2 .home-group-title { border-color: #16a34a }
+.home-group-3 .home-group-title { border-color: #f59e0b }
+
+/* Smooth fade-in for page transitions */
+[id^="page-"]:not(.d-none) { animation: bhtFadeIn .3s var(--bht-transition); }
+@keyframes bhtFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Spinner polish */
+.spinner-border { border-color: #cbd5e1; border-right-color: transparent; }
+.spinner-border.text-primary { border-color: #93c5fd; border-right-color: transparent; }
+
+/* Scrollbar polish */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; border: 2px solid transparent; background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background: #94a3b8; background-clip: padding-box; border: 2px solid transparent; }
+[data-theme="dark"] *::-webkit-scrollbar-thumb { background: #475569; background-clip: padding-box; border: 2px solid transparent; }
+
+/* Selection color */
+::selection { background: rgba(37, 99, 235, .25); color: #1e3a8a; }
+[data-theme="dark"] ::selection { background: rgba(96, 165, 250, .3); color: #dbeafe; }
