@@ -76,6 +76,22 @@
     });
   }
 
+  // תצוגת בית: מורים (מלמד/מחנך) מקבלים בית פשוט ויפה; שאר התפקידים — רשת אריחים.
+  function updateHomeMode() {
+    const u = window.currentUser, th = $('#teacherHome'), tg = $('#tileGrid'), hero = document.querySelector('.home-hero');
+    if (!th || !tg) return;
+    const isTeacher = u && (u.role === 'מלמד' || u.role === 'מחנך');
+    if (isTeacher && window.renderTeacherHome) {
+      tg.style.display = 'none'; th.style.display = '';
+      if (hero) { hero.querySelector('h1').textContent = 'שלום ' + (u.name || ''); hero.querySelector('p').textContent = 'רישום מהיר לתלמידים — פשוט ומהיר.'; }
+      window.renderTeacherHome(th);
+    } else {
+      tg.style.display = ''; th.style.display = 'none'; th.innerHTML = '';
+      if (hero) { hero.querySelector('h1').textContent = 'ברוכים הבאים'; hero.querySelector('p').textContent = 'מערכת מעקב — בחרו תחום כדי להתחיל.'; }
+    }
+  }
+  window.updateHomeMode = updateHomeMode;
+
   function showPage(id) {
     if (id && (window.MODULES || []).some(m => m.id === id) && window.Auth && window.Auth.currentUser && !window.Auth.canAccess(id)) {
       if (window.UI) window.UI.toast('אין לך הרשאה למסך זה', 'err');
@@ -84,6 +100,7 @@
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const target = document.getElementById('page-' + id) || $('#page-home');
     target.classList.add('active');
+    if (target.id === 'page-home') updateHomeMode();
     if (window.PAGE_RENDERERS && window.PAGE_RENDERERS[id]) {
       try { window.PAGE_RENDERERS[id](target); } catch (e) { console.warn('renderer error', id, e); }
     }

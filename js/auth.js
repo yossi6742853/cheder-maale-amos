@@ -64,7 +64,7 @@
       case 'מפקח':  return { perms: null, mode: 'readonly', scoped: false };       // הכל, ללא שינויים
       case 'מזכירה': return { perms: money, mode: 'full', scoped: false };          // כספים בלבד
       case 'מחנך':  return { perms: nonMoney, mode: 'full', scoped: true };        // הכל חוץ מכספים/ניהול, כיתתו בלבד
-      case 'מלמד':  return { perms: entry, mode: 'writeonly', scoped: true };       // הזנה בלבד, בלי צפייה
+      case 'מלמד':  return { perms: entry, mode: 'writeonly', scoped: false };      // הזנה בלבד (לכל התלמידים), בלי צפייה
       default:      return { perms: null, mode: 'full', scoped: false };            // legacy מורה
     }
   }
