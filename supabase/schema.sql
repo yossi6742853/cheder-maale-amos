@@ -56,11 +56,17 @@ create table if not exists public.behavior_events (
   category_id bigint references public.categories(id) on delete set null,
   severity    text,
   event_date  date not null default current_date,
+  event_time  text,
   note        text,
   created_by  uuid references public.profiles(id) on delete set null,
   created_at  timestamptz not null default now()
 );
 create index if not exists idx_behavior_student on public.behavior_events(student_id);
+
+create table if not exists public.subjects (
+  id   bigint generated always as identity primary key,
+  name text not null
+);
 
 create table if not exists public.attendance (
   id         bigint generated always as identity primary key,
@@ -142,9 +148,34 @@ create table if not exists public.tuition (
   id         bigint generated always as identity primary key,
   student_id bigint not null references public.students(id) on delete cascade,
   month      text not null,       -- YYYY-MM
+  pay_date   date,                -- תאריך תשלום מלא (יום בחודש)
   amount     numeric,
+  method     text,                -- מזומן / העברה / בית ספר / נדרים פלוס
   status     text not null default 'due',  -- paid / due
   note       text
+);
+
+-- קופה כללית: הכנסות נוספות (מעבר לגבייה) והוצאות (עובדים/כלליות)
+create table if not exists public.income (
+  id     bigint generated always as identity primary key,
+  date   date not null default current_date,
+  source text,
+  amount numeric,
+  method text,
+  note   text,
+  created_by uuid references public.profiles(id) on delete set null
+);
+create table if not exists public.expenses (
+  id      bigint generated always as identity primary key,
+  date    date not null default current_date,
+  name    text not null,
+  tz      text,
+  kind    text,      -- עובד / כללית
+  method  text,
+  payslip text,      -- עם תלוש / ללא תלוש
+  amount  numeric,
+  note    text,
+  created_by uuid references public.profiles(id) on delete set null
 );
 
 -- ===== טפסים וחתימות הורים =====

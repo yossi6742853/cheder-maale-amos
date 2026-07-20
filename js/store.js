@@ -9,29 +9,50 @@
 
   // ---------- seed דמו (שמות פיקטיביים בלבד) ----------
   const seed = {
-    classes: [{ id: 1, name: 'כיתה א׳' }, { id: 2, name: 'כיתה ב׳' }, { id: 3, name: 'כיתה ג׳' }],
-    users: [
-      { id: 1, name: 'מנהל המערכת', tz: '000000000', password: '1234', role: 'מנהל' },
-      { id: 2, name: 'מלמד כיתה א׳', tz: '111111111', password: '1234', role: 'מורה' },
-      { id: 3, name: 'מלמד כיתה ב׳', tz: '222222222', password: '1234', role: 'מורה', perms: ['students', 'behavior', 'attendance'] },
+    classes: [
+      { id: 1, name: 'כיתה א׳' }, { id: 2, name: 'כיתה ב׳' }, { id: 3, name: 'כיתה ג׳' },
+      { id: 4, name: 'כיתה ד׳' }, { id: 5, name: 'כיתה ה׳' }, { id: 6, name: 'כיתה ו׳' },
     ],
-    user_class_access: [{ id: 1, user_id: 2, class_id: 1 }, { id: 2, user_id: 3, class_id: 2 }],
+    // כניסה לפי שם; סיסמה ראשונית = מספר טלפון (המשתמש משנה אחר-כך)
+    users: [
+      { id: 1, name: 'עמנואל רקובסקי', phone: '0548451402', password: '0548451402', role: 'מנהל' },
+      { id: 2, name: 'משה רביבו', phone: '0583256040', password: '0583256040', role: 'מחנך' },
+      { id: 3, name: 'זאבי לוונשטיין', phone: '0583288616', password: '0583288616', role: 'מחנך' },
+      { id: 4, name: 'דוד וינברגר', phone: '0548446682', password: '0548446682', role: 'מחנך' },
+      { id: 5, name: 'רפאל פלדמן', phone: '0548442649', password: '0548442649', role: 'מחנך' },
+      { id: 6, name: 'יעקב שפירא', phone: '0583234573', password: '0583234573', role: 'מחנך' },
+      { id: 7, name: 'משה קופמן', phone: '0527153995', password: '0527153995', role: 'מחנך' },
+      { id: 8, name: 'גדליה גורפלד', phone: '0533199345', password: '0533199345', role: 'מלמד' },
+      { id: 9, name: 'שלמה שטארק', phone: '0548408914', password: '0548408914', role: 'מלמד' },
+      { id: 10, name: 'רמי אברמוביץ', phone: '0556700049', password: '0556700049', role: 'מפקח' },
+      { id: 11, name: 'מירי הולצמן', phone: '02-9931101', password: '02-9931101', role: 'מזכירה' },
+    ],
+    user_class_access: [
+      { id: 1, user_id: 2, class_id: 1 }, { id: 2, user_id: 3, class_id: 2 }, { id: 3, user_id: 4, class_id: 3 },
+      { id: 4, user_id: 5, class_id: 4 }, { id: 5, user_id: 6, class_id: 5 }, { id: 6, user_id: 7, class_id: 6 },
+    ],
     students: [
       { id: 1, name: 'תלמיד לדוגמה א׳', class_id: 1, parent_name: 'משפחת א׳', parent_phone: '050-0000001', status: 'פעיל', notes: 'ילד מתמיד' },
       { id: 2, name: 'תלמיד לדוגמה ב׳', class_id: 1, parent_name: 'משפחת ב׳', parent_phone: '050-0000002', status: 'פעיל', notes: '' },
       { id: 3, name: 'תלמיד לדוגמה ג׳', class_id: 2, parent_name: 'משפחת ג׳', parent_phone: '050-0000003', status: 'פעיל', notes: '' },
-      { id: 4, name: 'תלמיד לדוגמה ד׳', class_id: 2, parent_name: 'משפחת ד׳', parent_phone: '050-0000004', status: 'פעיל', notes: '' },
-      { id: 5, name: 'תלמיד לדוגמה ה׳', class_id: 3, parent_name: 'משפחת ה׳', parent_phone: '050-0000005', status: 'לא פעיל', notes: 'עבר דירה' },
-      { id: 6, name: 'תלמיד לדוגמה ו׳', class_id: 3, parent_name: 'משפחת ו׳', parent_phone: '050-0000006', status: 'פעיל', notes: '' },
+      { id: 4, name: 'תלמיד לדוגמה ד׳', class_id: 3, parent_name: 'משפחת ד׳', parent_phone: '050-0000004', status: 'פעיל', notes: '' },
+      { id: 5, name: 'תלמיד לדוגמה ה׳', class_id: 4, parent_name: 'משפחת ה׳', parent_phone: '050-0000005', status: 'פעיל', notes: '' },
+      { id: 6, name: 'תלמיד לדוגמה ו׳', class_id: 5, parent_name: 'משפחת ו׳', parent_phone: '050-0000006', status: 'פעיל', notes: '' },
     ],
-    categories: [{ id: 1, name: 'התנהגות למופת', kind: 'behavior' }, { id: 2, name: 'הפרעה בשיעור', kind: 'behavior' }, { id: 3, name: 'עזרה לחבר', kind: 'behavior' }, { id: 4, name: 'איחור', kind: 'behavior' }],
+    // קטגוריות מעקב לפי בקשת עמנואל (המנהל יכול להוסיף עוד)
+    categories: [
+      { id: 1, name: 'משמעת', kind: 'behavior' }, { id: 2, name: 'כתיבה וקריאה', kind: 'behavior' },
+      { id: 3, name: 'מוגנות', kind: 'behavior' }, { id: 4, name: 'שיחה עם הורים', kind: 'behavior' },
+      { id: 5, name: 'שיחה עם תלמיד', kind: 'behavior' },
+    ],
+    subjects: [{ id: 1, name: 'חומש' }, { id: 2, name: 'משנה' }, { id: 3, name: 'גמרא' }, { id: 4, name: 'הלכה' }],
     behavior_events: [
-      { id: 1, student_id: 1, category_id: 1, severity: 'נמוכה', event_date: daysAgo(1), note: 'עזר בסידור הכיתה' },
-      { id: 2, student_id: 1, category_id: 3, severity: 'נמוכה', event_date: daysAgo(4), note: 'עזר לחבר בלימוד' },
-      { id: 3, student_id: 2, category_id: 2, severity: 'בינונית', event_date: daysAgo(2), note: 'דיבר בזמן השיעור' },
-      { id: 4, student_id: 3, category_id: 1, severity: 'נמוכה', event_date: daysAgo(3), note: '' },
-      { id: 5, student_id: 4, category_id: 4, severity: 'בינונית', event_date: daysAgo(1), note: 'איחר לתפילה' },
-      { id: 6, student_id: 2, category_id: 1, severity: 'נמוכה', event_date: daysAgo(6), note: '' },
+      { id: 1, student_id: 1, category_id: 1, severity: 'בינונית', event_date: daysAgo(1), event_time: '09:15', note: 'הפריע בתפילה' },
+      { id: 2, student_id: 1, category_id: 2, severity: 'נמוכה', event_date: daysAgo(4), event_time: '11:00', note: 'שיפור בכתיבה' },
+      { id: 3, student_id: 2, category_id: 4, severity: 'נמוכה', event_date: daysAgo(2), event_time: '13:30', note: 'שיחה עם ההורים על התקדמות' },
+      { id: 4, student_id: 3, category_id: 5, severity: 'נמוכה', event_date: daysAgo(3), event_time: '10:20', note: 'שיחת עידוד' },
+      { id: 5, student_id: 4, category_id: 3, severity: 'גבוהה', event_date: daysAgo(1), event_time: '08:45', note: 'נושא מוגנות — טופל' },
+      { id: 6, student_id: 2, category_id: 1, severity: 'נמוכה', event_date: daysAgo(6), event_time: '12:10', note: '' },
     ],
     attendance: [
       { id: 1, student_id: 1, date: T(), status: 'present' }, { id: 2, student_id: 2, date: T(), status: 'late' },
@@ -57,7 +78,17 @@
     ],
     reading: [{ id: 1, student_id: 1, level: 'שוטף', date: daysAgo(8), note: 'קורא יפה' }],
     writing: [{ id: 1, student_id: 1, level: 'טוב', date: daysAgo(8), note: '' }],
-    tuition: [{ id: 1, student_id: 1, month: T().slice(0, 7), amount: 500, status: 'paid' }],
+    tuition: [
+      { id: 1, student_id: 1, month: T().slice(0, 7), pay_date: T(), amount: 500, method: 'העברה', status: 'paid', note: '' },
+      { id: 2, student_id: 2, month: T().slice(0, 7), pay_date: '', amount: 500, method: '', status: 'due', note: '' },
+    ],
+    // קופה כללית — הכנסות (מעבר לגבייה) והוצאות (עובדים/כלליות)
+    income: [
+      { id: 1, date: daysAgo(10), source: 'מלגת קרן', amount: 2000, method: 'העברה', note: 'תרומה חד-פעמית' },
+    ],
+    expenses: [
+      { id: 1, date: daysAgo(5), name: 'ספק ניקיון', tz: '', kind: 'כללית', method: 'העברה', payslip: 'ללא תלוש', amount: 800, note: 'חומרי ניקיון' },
+    ],
     forms: [
       { id: 1, title: 'אישור השתתפות בטיול שנתי', body: 'הורים יקרים, נא לאשר את השתתפות בנכם בטיול השנתי שייערך בעז״ה החודש. נא לחתום למטה.', created_at: daysAgo(2) },
     ],

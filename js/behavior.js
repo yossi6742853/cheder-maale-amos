@@ -27,18 +27,23 @@
     const catOpts = cs.map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
     const pickAdd = await window.cv3Picker.html('q');
     const pickFilter = await window.cv3Picker.html('f', { placeholder: 'כל התלמידים' });
+    const catFilterOpts = cs.map(c => '<option value="' + c.id + '">' + esc(c.name) + '</option>').join('');
     page.innerHTML =
-      '<div class="page-head"><button class="back" onclick="showPage(\'home\')">→ חזרה לתפריט</button><h2>מעקב התנהגות</h2></div>' +
+      '<div class="page-head"><button class="back" onclick="showPage(\'home\')">→ חזרה לתפריט</button><h2>מעקב התנהגות</h2>' +
+      '<div class="head-actions"><button class="btn-ghost sm" id="behCsv"><i class="bi bi-download"></i> ייצוא דוח CSV</button></div></div>' +
       '<div class="qr-card"><h3><i class="bi bi-lightning-charge"></i> דיווח מהיר</h3>' +
         '<div class="qr-grid">' +
           pickAdd +
           '<div style="display:flex;gap:6px"><select class="inp mb0" id="qCat" style="flex:1"><option value="">קטגוריה…</option>' + catOpts + '</select>' +
             '<button class="btn-ghost sm" id="qCatAdd" type="button" title="הוסף קטגוריה"><i class="bi bi-plus-lg"></i></button></div>' +
           '<select class="inp mb0" id="qSev"><option>נמוכה</option><option selected>בינונית</option><option>גבוהה</option></select>' +
+          '<input class="inp mb0" id="qTime" type="time" title="שעה">' +
           '<input class="inp mb0" id="qNote" placeholder="הערה (רשות)">' +
           '<button class="btn-primary sm" id="qSave"><i class="bi bi-plus-lg"></i> דיווח</button>' +
         '</div></div>' +
-      '<div class="toolbar" style="grid-template-columns:1fr auto">' + pickFilter + '<span class="count-line" id="evCount" style="align-self:center"></span></div>' +
+      '<div class="toolbar" style="grid-template-columns:1fr auto auto">' + pickFilter +
+        '<select class="inp mb0" id="fCat"><option value="">כל הקטגוריות</option>' + catFilterOpts + '</select>' +
+        '<span class="count-line" id="evCount" style="align-self:center"></span></div>' +
       '<div id="timeline"></div>' +
       '<div id="evEmpty" class="empty-state" hidden><i class="bi bi-clipboard-check"></i><div>אין דיווחים עדיין — השתמש בדיווח המהיר למעלה</div></div>';
 
@@ -62,14 +67,17 @@
       });
     });
     let list = evs;
+    const filtered = () => {
+      const f = fpick.value(), fc = page.querySelector('#fCat').value;
+      return list.filter(e => (!f || String(e.student_id) === f) && (!fc || String(e.category_id) === fc));
+    };
     function draw() {
-      const f = fpick.value();
-      const rows = f ? list.filter(e => String(e.student_id) === f) : list;
+      const rows = filtered();
       page.querySelector('#timeline').innerHTML = rows.map(e =>
         '<div class="tl-item"><span class="sev-dot ' + sevClass(e.severity) + '"></span>' +
         '<div class="tl-main"><strong>' + esc(nameOf(e.student_id)) + '</strong> · ' + esc(catOf(e.category_id)) +
         (e.note ? ' <span class="tl-note">— ' + esc(e.note) + '</span>' : '') + '</div>' +
-        '<div class="tl-meta">' + esc(e.event_date) + '</div>' +
+        '<div class="tl-meta">' + esc(e.event_date) + (e.event_time ? ' · ' + esc(e.event_time) : '') + '</div>' +
         '<button class="mini danger" data-del="' + e.id + '"><i class="bi bi-trash"></i></button></div>').join('');
       page.querySelector('#evCount').textContent = rows.length + ' דיווחים';
       page.querySelector('#evEmpty').hidden = rows.length > 0;
@@ -78,13 +86,22 @@
         await delEvent(Number(b.dataset.del)); list = list.filter(e => e.id != b.dataset.del); draw(); window.UI.toast('נמחק');
       }));
     }
+    page.querySelector('#fCat').addEventListener('change', draw);
+    page.querySelector('#behCsv').addEventListener('click', () => {
+      const head = ['תלמיד', 'קטגוריה', 'רמה', 'תאריך', 'שעה', 'הערה'];
+      const lines = [head.join(',')].concat(filtered().map(e =>
+        [nameOf(e.student_id), catOf(e.category_id), e.severity, e.event_date, e.event_time || '', e.note || '']
+          .map(v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"').join(',')));
+      const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'behavior_report.csv'; a.click();
+    });
     page.querySelector('#qSave').addEventListener('click', async () => {
       const sid = pick.value(), cid = page.querySelector('#qCat').value;
       if (!sid) { window.UI.toast('בחר תלמיד', 'err'); return; }
-      const row = { student_id: Number(sid), category_id: cid ? Number(cid) : null, severity: page.querySelector('#qSev').value, event_date: today(), note: page.querySelector('#qNote').value.trim() };
+      const row = { student_id: Number(sid), category_id: cid ? Number(cid) : null, severity: page.querySelector('#qSev').value, event_date: today(), event_time: page.querySelector('#qTime').value, note: page.querySelector('#qNote').value.trim() };
       const r = await addEvent(row); if (!r.ok) { window.UI.toast('שגיאה', 'err'); return; }
       list = [(r.data && r.data[0]) || row].concat(list);
-      page.querySelector('#qNote').value = ''; page.querySelector('#qCat').selectedIndex = 0; page.querySelector('#qSev').selectedIndex = 1;
+      page.querySelector('#qNote').value = ''; page.querySelector('#qTime').value = ''; page.querySelector('#qCat').selectedIndex = 0; page.querySelector('#qSev').selectedIndex = 1;
       draw(); window.UI.toast('דווח בהצלחה');
     });
     draw();

@@ -257,6 +257,18 @@ table.tbl tbody tr:hover{background:var(--bg)}
 .prog{height:9px; background:var(--line); border-radius:6px; overflow:hidden}
 .prog-bar{height:100%; background:linear-gradient(90deg,var(--primary),var(--primary-dark)); border-radius:6px; transition:width .4s}
 .form-card .card-h-row{align-items:center}
+/* מצב צפייה-בלבד (מפקח) — מסתיר כפתורי פעולה/עריכה/מחיקה; רואים הכל, לא משנים */
+body.mode-readonly .btn-primary,
+body.mode-readonly [data-del], body.mode-readonly [data-tog],
+body.mode-readonly .att-btn, body.mode-readonly .row-act,
+body.mode-readonly #qCatAdd, body.mode-readonly #stuAdd, body.mode-readonly #usrAdd,
+body.mode-readonly .det-actions{ display:none !important; }
+body.mode-readonly .qr-card input, body.mode-readonly .qr-card select, body.mode-readonly .qr-card textarea{ pointer-events:none; opacity:.6; }
+/* מצב הזנה-בלבד (מלמד) — טופס הזנה בלבד, בלי צפייה ברשימות/דוחות */
+body.mode-writeonly #timeline, body.mode-writeonly .table-wrap, body.mode-writeonly #recList,
+body.mode-writeonly #logList, body.mode-writeonly .dash-grid, body.mode-writeonly .stat-row,
+body.mode-writeonly #noteList, body.mode-writeonly .toolbar, body.mode-writeonly .count-line,
+body.mode-writeonly #evEmpty, body.mode-writeonly #recEmpty, body.mode-writeonly #logEmpty{ display:none !important; }
 /* דף חתימת הורים (sign.html) */
 .sign-wrap{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; background:var(--bg)}
 .sign-card{width:100%; max-width:460px; background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow); padding:26px}

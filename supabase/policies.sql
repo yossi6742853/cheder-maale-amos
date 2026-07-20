@@ -124,9 +124,27 @@ create policy med_read on public.medications for select using (public.can_see_st
 drop policy if exists med_write on public.medications;
 create policy med_write on public.medications for all using (public.is_admin()) with check (public.is_admin());
 
--- ===== שכר לימוד — מנהל בלבד =====
-drop policy if exists tui_admin on public.tuition;
-create policy tui_admin on public.tuition for all using (public.is_admin()) with check (public.is_admin());
+-- ===== כספים — מנהל + מזכירה (מזכירה = כספים בלבד); מפקח קורא =====
+alter table public.tuition   enable row level security;
+alter table public.income    enable row level security;
+alter table public.expenses  enable row level security;
+alter table public.subjects  enable row level security;
+drop policy if exists tui_money on public.tuition;
+create policy tui_money on public.tuition for all
+  using (public.is_admin() or public.my_role() in ('מזכירה','מפקח'))
+  with check (public.is_admin() or public.my_role() = 'מזכירה');
+drop policy if exists inc_money on public.income;
+create policy inc_money on public.income for all
+  using (public.is_admin() or public.my_role() in ('מזכירה','מפקח'))
+  with check (public.is_admin() or public.my_role() = 'מזכירה');
+drop policy if exists exp_money on public.expenses;
+create policy exp_money on public.expenses for all
+  using (public.is_admin() or public.my_role() in ('מזכירה','מפקח'))
+  with check (public.is_admin() or public.my_role() = 'מזכירה');
+drop policy if exists subj_read on public.subjects;
+create policy subj_read on public.subjects for select using (auth.uid() is not null);
+drop policy if exists subj_admin on public.subjects;
+create policy subj_admin on public.subjects for all using (public.is_admin()) with check (public.is_admin());
 
 -- ===== feedback =====
 drop policy if exists fb_ins on public.feedback;

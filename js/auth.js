@@ -17,15 +17,15 @@
         '<div class="login-logo"><i class="bi bi-mortarboard-fill"></i></div>' +
         '<h2>כניסה למערכת</h2>' +
         '<p class="login-sub">מערכת מעקב — תלמוד תורה</p>' +
-        '<label class="lbl">תעודת זהות</label>' +
-        '<input type="text" id="loginTz" class="inp" inputmode="numeric" placeholder="מספר ת״ז" autocomplete="username">' +
+        '<label class="lbl">שם משתמש</label>' +
+        '<input type="text" id="loginTz" class="inp" placeholder="השם המלא שלך" autocomplete="username">' +
         '<label class="lbl">סיסמה</label>' +
-        '<input type="password" id="loginPw" class="inp" placeholder="סיסמה" autocomplete="current-password">' +
+        '<input type="password" id="loginPw" class="inp" placeholder="סיסמה (בפעם הראשונה — מספר הטלפון)" autocomplete="current-password">' +
         '<button class="btn-primary" id="loginBtn"><i class="bi bi-box-arrow-in-left"></i> כניסה</button>' +
         '<div id="loginMsg" class="login-msg"></div>' +
         (DEMO
-          ? '<div class="demo-note" style="margin-top:14px"><i class="bi bi-info-circle"></i> הדגמה — מנהל: ת״ז <b>000000000</b> סיסמה <b>1234</b> · מורה: <b>111111111</b> / <b>1234</b></div>'
-          : '<p class="login-hint">אין גישה? פנה למנהל המערכת.</p>') +
+          ? '<div class="demo-note" style="margin-top:14px"><i class="bi bi-info-circle"></i> הדגמה — כניסה בשם + טלפון כסיסמה. מנהל: <b>עמנואל רקובסקי</b> / <b>0548451402</b></div>'
+          : '<p class="login-hint">כניסה בשם; סיסמה ראשונית — מספר הטלפון. אין גישה? פנה למנהל.</p>') +
       '</div></div>';
     $('#pages').appendChild(sec);
     $('#loginBtn').addEventListener('click', doLogin);
@@ -33,32 +33,58 @@
   }
 
   async function doLogin() {
-    const tz = ($('#loginTz').value || '').trim();
+    const id = ($('#loginTz').value || '').trim();
     const pw = $('#loginPw').value || '';
     const msg = $('#loginMsg');
-    if (!tz || !pw) { msg.textContent = 'נא להזין ת״ז וסיסמה.'; return; }
+    if (!id || !pw) { msg.textContent = 'נא להזין שם וסיסמה.'; return; }
     msg.textContent = 'מתחבר…';
     if (DEMO) {
       const users = await window.store.list('users');
-      const u = users.find(x => x.tz === tz && x.password === pw && x.active !== false);
-      if (!u) { msg.textContent = 'ת״ז או סיסמה שגויים.'; return; }
+      // כניסה לפי שם (וגם ת״ז/טלפון כגיבוי); סיסמה ראשונית = טלפון
+      const u = users.find(x => (x.name === id || x.tz === id || x.phone === id) && x.password === pw && x.active !== false);
+      if (!u) { msg.textContent = 'שם או סיסמה שגויים.'; return; }
       msg.textContent = '';
       await setUser({ id: u.id, name: u.name, role: u.role, tz: u.tz, perms: u.perms });
     } else {
-      // Supabase: ת״ז ממופה למייל סינתטי; הסיסמה מאומתת בצד-שרת (hashed)
-      const { error } = await window.sb.auth.signInWithPassword({ email: tz + '@bht.co.il', password: pw });
-      if (error) { msg.textContent = 'ת״ז או סיסמה שגויים.'; return; }
+      // Supabase: המזהה ממופה למייל סינתטי; הסיסמה מאומתת בצד-שרת (hashed)
+      const email = id.includes('@') ? id : id + '@bht.co.il';
+      const { error } = await window.sb.auth.signInWithPassword({ email, password: pw });
+      if (error) { msg.textContent = 'שם או סיסמה שגויים.'; return; }
       msg.textContent = '';   // onAuthStateChange יטען את הפרופיל
     }
   }
 
+  // יכולות לפי תפקיד (בקשת עמנואל): מסכים מותרים + מצב (מלא/צפייה-בלבד/הזנה-בלבד).
+  function roleCaps(role) {
+    const money = ['tuition', 'cashbox'];
+    const entry = ['behavior', 'reading', 'writing', 'attendance', 'tests', 'functioning'];  // מסכי הזנה
+    const nonMoney = ['behavior', 'reading', 'writing', 'attendance', 'tests', 'functioning',
+      'students', 'medical', 'conversations', 'meetings', 'forms', 'calendar', 'reports'];
+    switch (role) {
+      case 'מנהל':  return { perms: null, mode: 'full', scoped: false };          // הכל + שינויים + כספים
+      case 'מפקח':  return { perms: null, mode: 'readonly', scoped: false };       // הכל, ללא שינויים
+      case 'מזכירה': return { perms: money, mode: 'full', scoped: false };          // כספים בלבד
+      case 'מחנך':  return { perms: nonMoney, mode: 'full', scoped: true };        // הכל חוץ מכספים/ניהול, כיתתו בלבד
+      case 'מלמד':  return { perms: entry, mode: 'writeonly', scoped: true };       // הזנה בלבד, בלי צפייה
+      default:      return { perms: null, mode: 'full', scoped: false };            // legacy מורה
+    }
+  }
+  window.roleCaps = roleCaps;
+
   async function setUser(u) {
     A.currentUser = u; window.currentUser = u;
-    A.perms = (u.role === 'מנהל') ? null : (u.perms && u.perms.length ? u.perms : null); // null = כל המסכים המותרים
-    A.scope = null;                    // null = מנהל (הכל); מערך = כיתות מורשות למורה
-    if (u.role !== 'מנהל' && window.store) {
+    const caps = roleCaps(u.role);
+    // הרשאות מסך: אם המנהל הגדיר perms פרטניות למשתמש — הן גוברות; אחרת ברירת-מחדל לפי התפקיד
+    A.perms = (u.perms && u.perms.length) ? u.perms : caps.perms;
+    A.mode = caps.mode;                // full / readonly / writeonly
+    A.scope = null;                    // null = הכל; מערך = כיתות מורשות
+    if (caps.scoped && window.store) {
       try { const acc = await window.store.list('user_class_access', { eq: { user_id: u.id } }); A.scope = acc.map(x => x.class_id); } catch (_) { A.scope = []; }
     }
+    // אכיפת מצב צפייה/הזנה דרך class על ה-body (CSS מסתיר כפתורי פעולה / רשימות)
+    document.body.classList.remove('mode-readonly', 'mode-writeonly');
+    if (A.mode === 'readonly') document.body.classList.add('mode-readonly');
+    else if (A.mode === 'writeonly') document.body.classList.add('mode-writeonly');
     renderUserInfo();
     filterByPermissions();
     if (window.showPage) window.showPage('home');
@@ -116,6 +142,7 @@
   async function logout() {
     if (!DEMO && window.sb) { try { await window.sb.auth.signOut(); } catch (_) {} }
     A.currentUser = null; window.currentUser = null;
+    document.body.classList.remove('mode-readonly', 'mode-writeonly');
     renderUserInfo();
     if (window.showPage) window.showPage('login');
   }
@@ -146,6 +173,7 @@
 
   window.Auth = {
     init: init, logout: logout, changePassword: changeOwnPassword, get currentUser() { return A.currentUser; }, scopeClasses: function () { return A.scope; },
+    get mode() { return A.mode || 'full'; }, isReadonly: function () { return A.mode === 'readonly'; },
     hasPermission: function (m) { const u = A.currentUser; if (!u) return false; return u.role === 'מנהל' || !m.adminOnly; },
     canAccess: function (id) {
       const u = A.currentUser; if (!u) return false;

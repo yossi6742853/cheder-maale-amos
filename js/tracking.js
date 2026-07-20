@@ -26,7 +26,8 @@
       const fieldsHtml = cfg.fields.map(f =>
         '<input class="inp mb0' + (f.wide ? ' fld-wide' : '') + '" data-f="' + f.k + '" placeholder="' + esc(f.label) + '"' + (f.type === 'number' ? ' type="number"' : '') + '>').join('');
       page.innerHTML =
-        '<div class="page-head"><button class="back" onclick="showPage(\'home\')">→ חזרה לתפריט</button><h2>' + cfg.title + '</h2></div>' +
+        '<div class="page-head"><button class="back" onclick="showPage(\'home\')">→ חזרה לתפריט</button><h2>' + cfg.title + '</h2>' +
+        '<div class="head-actions"><button class="btn-ghost sm" id="recCsv"><i class="bi bi-download"></i> ייצוא CSV</button></div></div>' +
         (cfg.restricted ? '<div class="demo-note" style="margin:0 2px 12px"><i class="bi bi-shield-lock"></i> מידע רגיש — הגישה מוגבלת לתפקידים מורשים (נאכף ע"י ה-RLS בצד-שרת).</div>' : '') +
         '<div class="qr-card"><h3><i class="bi ' + cfg.icon + '"></i> רישום חדש</h3><div class="qr-grid" style="grid-template-columns:repeat(' + cfg.fields.length + ',1fr) auto">' +
           pickHtml +
@@ -48,6 +49,14 @@
           await del(cfg.table, Number(b.dataset.del)); data = data.filter(x => x.id != b.dataset.del); draw(); window.UI.toast('נמחק');
         }));
       }
+      page.querySelector('#recCsv').addEventListener('click', () => {
+        const head = ['תלמיד'].concat(cfg.fields.map(f => f.label)).concat(['תאריך']);
+        const lines = [head.join(',')].concat(data.map(x =>
+          [nameOf(x.student_id)].concat(cfg.fields.map(f => x[f.k])).concat([x.date || x.event_date || ''])
+            .map(v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"').join(',')));
+        const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = cfg.table + '.csv'; a.click();
+      });
       page.querySelector('#recSave').addEventListener('click', async () => {
         const sid = pick.value();
         if (!sid) { window.UI.toast('בחר תלמיד', 'err'); return; }
@@ -125,7 +134,7 @@
   }
 
   const R = window.PAGE_RENDERERS = window.PAGE_RENDERERS || {};
-  R.tests = makeRecord({ table: 'tests', title: 'מבחנים', icon: 'bi-card-checklist', fields: [{ k: 'subject', label: 'פרשה / נושא' }, { k: 'grade', label: 'ציון', type: 'number' }] });
+  R.tests = makeRecord({ table: 'tests', title: 'מבחנים', icon: 'bi-card-checklist', fields: [{ k: 'subject', label: 'מקצוע / נושא' }, { k: 'grade', label: 'ציון', type: 'number' }, { k: 'examiner', label: 'שם הבוחן' }] });
   R.functioning = makeRecord({ table: 'functioning', title: 'ציוני תפקוד', icon: 'bi-bar-chart-line', fields: [{ k: 'area', label: 'תחום' }, { k: 'score', label: 'ציון', type: 'number' }] });
   R.conversations = makeRecord({ table: 'conversations', title: 'שיחות עם תלמידים', icon: 'bi-chat-dots', fields: [{ k: 'summary', label: 'סיכום השיחה', wide: true }] });
   R.meetings = makeRecord({ table: 'meetings', title: 'אסיפות הורים', icon: 'bi-people', fields: [{ k: 'attendees', label: 'משתתפים' }, { k: 'summary', label: 'סיכום', wide: true }] });

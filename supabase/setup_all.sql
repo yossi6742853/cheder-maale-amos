@@ -60,11 +60,17 @@ create table if not exists public.behavior_events (
   category_id bigint references public.categories(id) on delete set null,
   severity    text,
   event_date  date not null default current_date,
+  event_time  text,
   note        text,
   created_by  uuid references public.profiles(id) on delete set null,
   created_at  timestamptz not null default now()
 );
 create index if not exists idx_behavior_student on public.behavior_events(student_id);
+
+create table if not exists public.subjects (
+  id   bigint generated always as identity primary key,
+  name text not null
+);
 
 create table if not exists public.attendance (
   id         bigint generated always as identity primary key,
@@ -146,9 +152,34 @@ create table if not exists public.tuition (
   id         bigint generated always as identity primary key,
   student_id bigint not null references public.students(id) on delete cascade,
   month      text not null,       -- YYYY-MM
+  pay_date   date,                -- תאריך תשלום מלא (יום בחודש)
   amount     numeric,
+  method     text,                -- מזומן / העברה / בית ספר / נדרים פלוס
   status     text not null default 'due',  -- paid / due
   note       text
+);
+
+-- קופה כללית: הכנסות נוספות (מעבר לגבייה) והוצאות (עובדים/כלליות)
+create table if not exists public.income (
+  id     bigint generated always as identity primary key,
+  date   date not null default current_date,
+  source text,
+  amount numeric,
+  method text,
+  note   text,
+  created_by uuid references public.profiles(id) on delete set null
+);
+create table if not exists public.expenses (
+  id      bigint generated always as identity primary key,
+  date    date not null default current_date,
+  name    text not null,
+  tz      text,
+  kind    text,      -- עובד / כללית
+  method  text,
+  payslip text,      -- עם תלוש / ללא תלוש
+  amount  numeric,
+  note    text,
+  created_by uuid references public.profiles(id) on delete set null
 );
 
 -- ===== טפסים וחתימות הורים =====
@@ -335,9 +366,27 @@ create policy med_read on public.medications for select using (public.can_see_st
 drop policy if exists med_write on public.medications;
 create policy med_write on public.medications for all using (public.is_admin()) with check (public.is_admin());
 
--- ===== שכר לימוד — מנהל בלבד =====
-drop policy if exists tui_admin on public.tuition;
-create policy tui_admin on public.tuition for all using (public.is_admin()) with check (public.is_admin());
+-- ===== כספים — מנהל + מזכירה (מזכירה = כספים בלבד); מפקח קורא =====
+alter table public.tuition   enable row level security;
+alter table public.income    enable row level security;
+alter table public.expenses  enable row level security;
+alter table public.subjects  enable row level security;
+drop policy if exists tui_money on public.tuition;
+create policy tui_money on public.tuition for all
+  using (public.is_admin() or public.my_role() in ('מזכירה','מפקח'))
+  with check (public.is_admin() or public.my_role() = 'מזכירה');
+drop policy if exists inc_money on public.income;
+create policy inc_money on public.income for all
+  using (public.is_admin() or public.my_role() in ('מזכירה','מפקח'))
+  with check (public.is_admin() or public.my_role() = 'מזכירה');
+drop policy if exists exp_money on public.expenses;
+create policy exp_money on public.expenses for all
+  using (public.is_admin() or public.my_role() in ('מזכירה','מפקח'))
+  with check (public.is_admin() or public.my_role() = 'מזכירה');
+drop policy if exists subj_read on public.subjects;
+create policy subj_read on public.subjects for select using (auth.uid() is not null);
+drop policy if exists subj_admin on public.subjects;
+create policy subj_admin on public.subjects for all using (public.is_admin()) with check (public.is_admin());
 
 -- ===== feedback =====
 drop policy if exists fb_ins on public.feedback;
