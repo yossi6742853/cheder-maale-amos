@@ -6,16 +6,12 @@
   // רשימת המודולים — כל אחד יקבל אריח + עמוד. part = באיזה חלק בנייה נבנה בפועל.
   const G1 = 'מעקב ולמידה', G2 = 'תלמיד וקהילה', G3 = 'ניהול ודוחות';
   const MODULES = [
-    { id: 'behavior',      label: 'מעקב התנהגות',     icon: 'bi-clipboard-check', group: G1, color: '#c0392b' },
-    { id: 'reading',       label: 'קידום קריאה',      icon: 'bi-book',            group: G1, color: '#2e86ab' },
-    { id: 'writing',       label: 'מעקב כתיבה',       icon: 'bi-pencil-square',   group: G1, color: '#8e44ad' },
+    // מסך מעקב אחד מרכז את הכל — הקטגוריה בוחרת את סוג הרישום (משמעת/כתיבה-קריאה/מוגנות/שיחות...)
+    { id: 'behavior',      label: 'מעקב',             icon: 'bi-clipboard-check', group: G1, color: '#c0392b' },
     { id: 'attendance',    label: 'נוכחות',           icon: 'bi-calendar-check',  group: G1, color: '#1f8a5b' },
     { id: 'tests',         label: 'מבחנים',           icon: 'bi-card-checklist',  group: G1, color: '#d68910' },
-    { id: 'functioning',   label: 'ציוני תפקוד',      icon: 'bi-bar-chart-line',  group: G1, color: '#16a085' },
     { id: 'students',      label: 'תלמידים',          icon: 'bi-people-fill',     group: G2, color: '#2b7c98' },
     { id: 'medical',       label: 'רפואי',            icon: 'bi-capsule',         group: G2, color: '#d35400' },
-    { id: 'conversations', label: 'שיחות',            icon: 'bi-chat-dots',       group: G2, color: '#2980b9' },
-    { id: 'meetings',      label: 'אסיפות הורים',     icon: 'bi-people',          group: G2, color: '#7d3c98' },
     { id: 'forms',         label: 'טפסים וחתימות',    icon: 'bi-file-earmark-check', group: G2, color: '#c0398a' },
     { id: 'calendar',      label: 'לוח שנה',          icon: 'bi-calendar3',       group: G2, color: '#117a65' },
     { id: 'reports',       label: 'דשבורד ודוחות',    icon: 'bi-graph-up-arrow',  group: G3, color: '#34495e' },
