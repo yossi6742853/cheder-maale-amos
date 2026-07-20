@@ -1,0 +1,189 @@
+// admin.js — חלק 7: הגדרות והרשאות (מנהל), שכר לימוד, בקשות תיקון, יומן פעולות.
+(function () {
+  'use strict';
+  const DEMO = !window.sb;
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  // כל הנתונים (משתמשים/יומן/בקשות/שכר-לימוד) דרך המאגר המרכזי store.js — אין נתונים מקומיים.
+
+  async function renderSettings(page) {
+    const [classes, users, access, audit, feedbacks, cats] = await Promise.all([
+      window.cv3Students ? window.cv3Students.getClasses() : [],
+      window.store.list('users'), window.store.list('user_class_access'),
+      window.store.list('audit_log'), window.store.list('feedback'),
+      window.store.list('categories'),
+    ]);
+    const clsName = id => { const c = classes.find(x => x.id == id); return c ? c.name : ''; };
+    const userClasses = uid => access.filter(a => a.user_id == uid).map(a => a.class_id);
+    page.innerHTML =
+      '<div class="page-head"><button class="back" onclick="showPage(\'home\')">→ חזרה לתפריט</button><h2>הגדרות והרשאות</h2></div>' +
+      '<div class="qr-card"><h3><i class="bi bi-mortarboard"></i> כיתות</h3><div id="clsList" class="chip-list"></div>' +
+        '<div class="qr-grid" style="grid-template-columns:1fr auto;margin-top:10px"><input class="inp mb0" id="newCls" placeholder="שם כיתה חדשה"><button class="btn-primary sm" id="addCls"><i class="bi bi-plus-lg"></i> הוסף</button></div></div>' +
+      '<div class="qr-card"><h3><i class="bi bi-tags"></i> קטגוריות התנהגות</h3><p class="login-hint" style="margin:0 0 8px">הקטגוריות מופיעות בבחירה בעת דיווח התנהגות. ניתן להוסיף, לערוך ולמחוק.</p><div id="catList"></div>' +
+        '<div class="qr-grid" style="grid-template-columns:1fr auto;margin-top:10px"><input class="inp mb0" id="newCat" placeholder="שם קטגוריה חדשה"><button class="btn-primary sm" id="addCat"><i class="bi bi-plus-lg"></i> הוסף</button></div></div>' +
+      '<div class="qr-card"><div class="card-h-row"><h3><i class="bi bi-people"></i> צוות והרשאות</h3><button class="btn-primary sm" id="usrAdd"><i class="bi bi-person-plus"></i> משתמש חדש</button></div>' +
+        '<div class="table-wrap"><table class="tbl"><thead><tr><th>שם</th><th>ת״ז</th><th>תפקיד</th><th>כיתות</th><th></th></tr></thead><tbody id="usrBody"></tbody></table></div></div>' +
+      '<div class="qr-card"><h3><i class="bi bi-clock-history"></i> יומן פעולות</h3><div id="audList"></div></div>' +
+      '<div class="qr-card"><h3><i class="bi bi-bug"></i> בקשות תיקון</h3><div class="qr-grid" style="grid-template-columns:auto 2fr auto"><select class="inp mb0" id="fbKind"><option value="bug">באג</option><option value="idea">רעיון</option></select><input class="inp mb0" id="fbBody" placeholder="תיאור…"><button class="btn-primary sm" id="fbSave"><i class="bi bi-send"></i> שלח</button></div><div id="fbList" style="margin-top:10px"></div></div>' +
+      '<div class="qr-card"><h3><i class="bi bi-info-circle"></i> אודות</h3><ul class="about-list"><li>מערכת מעקב — תלמוד תורה · גרסה 0.2</li><li>ארכיטקטורה: GitHub Pages + Supabase (RLS)</li><li>מוסד: <b id="aboutInst"></b></li></ul></div>';
+
+    const drawCls = () => { page.querySelector('#clsList').innerHTML = classes.map(c => '<span class="chip ok">' + esc(c.name) + '</span>').join('') || '<span class="tl-note">אין כיתות</span>'; };
+    function drawCats() {
+      page.querySelector('#catList').innerHTML = cats.length ? cats.map(c =>
+        '<div class="tl-item"><span class="sev-dot mid"></span><div class="tl-main">' + esc(c.name) + '</div>' +
+        '<button class="mini" data-cedit="' + c.id + '" title="עריכה"><i class="bi bi-pencil"></i></button>' +
+        '<button class="mini danger" data-cdel="' + c.id + '" title="מחיקה"><i class="bi bi-trash"></i></button></div>').join('')
+        : '<div class="tl-note" style="padding:8px">אין קטגוריות עדיין</div>';
+      page.querySelectorAll('[data-cedit]').forEach(b => b.addEventListener('click', () => catForm(cats.find(c => c.id == b.dataset.cedit))));
+      page.querySelectorAll('[data-cdel]').forEach(b => b.addEventListener('click', async () => {
+        const c = cats.find(x => x.id == b.dataset.cdel); if (!c) return;
+        if (!(await window.UI.confirm('למחוק את הקטגוריה "' + esc(c.name) + '"? דיווחים קיימים יישמרו.'))) return;
+        await window.store.remove('categories', c.id); const i = cats.indexOf(c); if (i >= 0) cats.splice(i, 1);
+        drawCats(); window.UI.toast('הקטגוריה נמחקה');
+      }));
+    }
+    function catForm(existing) {
+      const c = existing || {};
+      window.UI.modal({
+        title: existing ? 'עריכת קטגוריה' : 'קטגוריה חדשה', saveLabel: 'שמירה',
+        bodyHTML: '<div class="form-grid"><label class="fld fld-wide"><span>שם הקטגוריה *</span><input class="inp mb0" id="cat_name" value="' + esc(c.name) + '"></label></div>',
+        onSave: async (mel) => {
+          const name = mel.querySelector('#cat_name').value.trim();
+          if (!name) { window.UI.toast('שם חובה', 'err'); return false; }
+          if (existing) { await window.store.update('categories', c.id, { name }); c.name = name; }
+          else { const r = await window.store.add('categories', { name, kind: 'behavior' }); cats.push((r.data && r.data[0]) || { id: Date.now(), name, kind: 'behavior' }); }
+          drawCats(); window.UI.toast('נשמר'); return true;
+        },
+      });
+    }
+    function drawUsers() {
+      page.querySelector('#usrBody').innerHTML = users.map(u => {
+        const cls = (u.role === 'מנהל' ? '<span class="tl-note">כל הכיתות</span>' : (userClasses(u.id).map(clsName).filter(Boolean).join(', ') || '—')) +
+          (u.role !== 'מנהל' && u.perms && u.perms.length ? ' <span class="det-badge">' + u.perms.length + ' מסכים</span>' : '');
+        return '<tr><td>' + esc(u.name) + '</td><td>' + esc(u.tz || '') + '</td><td><span class="chip ' + (u.role === 'מנהל' ? 'ok' : 'off') + '">' + esc(u.role) + '</span></td><td>' + cls + '</td>' +
+          '<td class="row-act"><button class="mini" data-uedit="' + u.id + '" title="עריכה"><i class="bi bi-pencil"></i></button><button class="mini danger" data-udel="' + u.id + '" title="מחיקה"><i class="bi bi-trash"></i></button></td></tr>';
+      }).join('');
+      page.querySelectorAll('[data-uedit]').forEach(b => b.addEventListener('click', () => openUserForm(users.find(u => u.id == b.dataset.uedit))));
+      page.querySelectorAll('[data-udel]').forEach(b => b.addEventListener('click', async () => {
+        const u = users.find(x => x.id == b.dataset.udel); if (!u) return;
+        if (u.role === 'מנהל' && users.filter(x => x.role === 'מנהל').length <= 1) { window.UI.toast('חייב להישאר מנהל אחד לפחות', 'err'); return; }
+        if (!(await window.UI.confirm('למחוק את המשתמש "' + esc(u.name) + '"?'))) return;
+        await window.store.remove('users', u.id); const i = users.indexOf(u); if (i >= 0) users.splice(i, 1);
+        drawUsers(); window.UI.toast('נמחק');
+      }));
+    }
+    function openUserForm(existing) {
+      const u = existing || {};
+      const uc = existing ? userClasses(u.id) : [];
+      const clsBoxes = classes.map(c => '<label class="cb"><input type="checkbox" value="' + c.id + '"' + (uc.includes(c.id) ? ' checked' : '') + '> ' + esc(c.name) + '</label>').join('');
+      const assignable = (window.MODULES || []).filter(m => !m.adminOnly);
+      const up = (existing && u.perms && u.perms.length) ? u.perms : assignable.map(m => m.id);
+      const permBoxes = assignable.map(m => '<label class="cb"><input type="checkbox" value="' + m.id + '"' + (up.includes(m.id) ? ' checked' : '') + '> ' + esc(m.label) + '</label>').join('');
+      const mm = window.UI.modal({
+        title: existing ? 'עריכת משתמש והרשאות' : 'משתמש חדש', saveLabel: 'שמירה',
+        bodyHTML:
+          '<div class="form-grid">' +
+          '<label class="fld"><span>שם *</span><input class="inp mb0" id="u_name" value="' + esc(u.name) + '"></label>' +
+          '<label class="fld"><span>תעודת זהות *</span><input class="inp mb0" id="u_tz" value="' + esc(u.tz) + '"></label>' +
+          '<label class="fld"><span>סיסמה ' + (existing ? '(ניתן לצפות ולערוך)' : '*') + '</span>' +
+            '<div style="display:flex;gap:6px"><input class="inp mb0" id="u_pw" type="password" placeholder="סיסמה" style="flex:1" value="' + esc(existing ? (u.password || '') : '') + '">' +
+            '<button type="button" class="btn-ghost sm" id="u_pw_show" title="הצג/הסתר"><i class="bi bi-eye"></i></button></div></label>' +
+          '<label class="fld"><span>תפקיד</span><select class="inp mb0" id="u_role"><option' + (u.role === 'מנהל' ? ' selected' : '') + '>מנהל</option><option' + (u.role === 'מורה' || !u.role ? ' selected' : '') + '>מורה</option><option' + (u.role === 'צוות' ? ' selected' : '') + '>צוות</option></select></label>' +
+          '<div class="fld fld-wide"><span>כיתות מורשות</span><div class="cb-grid" id="classGrid">' + (clsBoxes || '<span class="tl-note">אין כיתות — הוסף כיתה קודם</span>') + '</div></div>' +
+          '<div class="fld fld-wide"><span>מסכים מורשים <small style="font-weight:400;color:var(--muted)">— מנהל רואה הכל</small></span>' +
+            '<div class="cb-grid" id="permGrid">' + permBoxes + '</div>' +
+            '<div style="margin-top:7px;display:flex;gap:6px"><button type="button" class="btn-ghost sm" id="permAll">סמן הכל</button><button type="button" class="btn-ghost sm" id="permNone">נקה הכל</button></div></div>' +
+          '</div>',
+        onSave: async (mel) => {
+          const name = mel.querySelector('#u_name').value.trim(), tz = mel.querySelector('#u_tz').value.trim(), pw = mel.querySelector('#u_pw').value, role = mel.querySelector('#u_role').value;
+          if (!name || !tz) { window.UI.toast('שם ות״ז חובה', 'err'); return false; }
+          if (!existing && !pw) { window.UI.toast('סיסמה חובה למשתמש חדש', 'err'); return false; }
+          const chosenPerms = [...mel.querySelectorAll('#permGrid input:checked')].map(c => c.value);
+          const allIds = assignable.map(m => m.id);
+          const row = { name, tz, role, perms: (role === 'מנהל' || chosenPerms.length >= allIds.length) ? null : chosenPerms };
+          if (pw) row.password = pw;
+          let uid;
+          if (existing) { await window.store.update('users', u.id, row); Object.assign(u, row); uid = u.id; }
+          else { const r = await window.store.add('users', row); const nu = (r.data && r.data[0]) || Object.assign({ id: Date.now() }, row); uid = nu.id; users.push(nu); }
+          const chosen = [...mel.querySelectorAll('#classGrid input:checked')].map(c => Number(c.value));
+          for (const a of access.filter(a => a.user_id == uid)) await window.store.remove('user_class_access', a.id);
+          for (let i = access.length - 1; i >= 0; i--) if (access[i].user_id == uid) access.splice(i, 1);
+          for (const cid of chosen) { const r = await window.store.add('user_class_access', { user_id: uid, class_id: cid }); access.push((r.data && r.data[0]) || { user_id: uid, class_id: cid }); }
+          drawUsers(); window.UI.toast(existing ? 'המשתמש עודכן' : 'משתמש נוסף');
+          return true;
+        },
+      });
+      // כפתורי הכל/נקה + השבתת הרשאות למנהל (רואה הכל)
+      const pg = mm.el.querySelector('#permGrid'), roleSel = mm.el.querySelector('#u_role');
+      mm.el.querySelector('#permAll').addEventListener('click', () => pg.querySelectorAll('input').forEach(c => c.checked = true));
+      mm.el.querySelector('#permNone').addEventListener('click', () => pg.querySelectorAll('input').forEach(c => c.checked = false));
+      const toggleAdmin = () => { const dis = roleSel.value === 'מנהל'; mm.el.querySelectorAll('#permGrid input, #classGrid input, #permAll, #permNone').forEach(el => { el.disabled = dis; }); };
+      roleSel.addEventListener('change', toggleAdmin); toggleAdmin();
+      // הצג/הסתר סיסמה (המנהל רשאי לראות ולערוך את סיסמת המשתמש)
+      const pwInp = mm.el.querySelector('#u_pw'), pwBtn = mm.el.querySelector('#u_pw_show');
+      if (pwBtn) pwBtn.addEventListener('click', () => { const t = pwInp.type === 'password'; pwInp.type = t ? 'text' : 'password'; pwBtn.innerHTML = '<i class="bi bi-eye' + (t ? '-slash' : '') + '"></i>'; });
+    }
+    page.querySelector('#audList').innerHTML = (audit.length ? audit.slice().reverse() : []).map(a => '<div class="tl-item"><span class="sev-dot lo"></span><div class="tl-main">' + esc(a.detail) + '</div><div class="tl-meta">' + esc(a.created_at) + '</div></div>').join('') || '<div class="tl-note" style="padding:8px">אין פעולות</div>';
+    const drawFb = () => { page.querySelector('#fbList').innerHTML = feedbacks.slice().reverse().map(f => '<div class="tl-item"><span class="sev-dot ' + (f.kind === 'bug' ? 'hi' : 'lo') + '"></span><div class="tl-main">' + (f.kind === 'bug' ? 'באג' : 'רעיון') + ' — ' + esc(f.body) + '</div></div>').join(''); };
+    const ai = document.getElementById('aboutInst'); if (ai) ai.textContent = (window.CV3 || {}).INSTANCE_NAME || '';
+
+    page.querySelector('#usrAdd').addEventListener('click', () => openUserForm(null));
+    page.querySelector('#addCls').addEventListener('click', async () => {
+      const n = page.querySelector('#newCls').value.trim(); if (!n) return;
+      const r = await window.cv3Students.addClass(n); if (r.ok) { classes.push({ id: r.id || Date.now(), name: n }); page.querySelector('#newCls').value = ''; drawCls(); window.UI.toast('כיתה נוספה'); }
+    });
+    page.querySelector('#addCat').addEventListener('click', async () => {
+      const n = page.querySelector('#newCat').value.trim(); if (!n) return;
+      const r = await window.store.add('categories', { name: n, kind: 'behavior' });
+      cats.push((r.data && r.data[0]) || { id: Date.now(), name: n, kind: 'behavior' });
+      page.querySelector('#newCat').value = ''; drawCats(); window.UI.toast('קטגוריה נוספה');
+    });
+    page.querySelector('#fbSave').addEventListener('click', async () => {
+      const body = page.querySelector('#fbBody').value.trim(); if (!body) return;
+      const kind = page.querySelector('#fbKind').value;
+      const r = await window.store.add('feedback', { kind, body });
+      feedbacks.push((r.data && r.data[0]) || { kind, body }); page.querySelector('#fbBody').value = ''; drawFb(); window.UI.toast('נשלח, תודה');
+    });
+    drawCls(); drawCats(); drawUsers(); drawFb();
+  }
+
+  async function renderTuition(page) {
+    const [studs, tuition] = await Promise.all([
+      window.cv3Students ? window.cv3Students.getStudents() : [], window.store.list('tuition'),
+    ]);
+    const nameOf = id => { const s = studs.find(x => x.id == id); return s ? s.name : '—'; };
+    const stuOpts = studs.map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('');
+    const ym = today().slice(0, 7);
+    page.innerHTML =
+      '<div class="page-head"><button class="back" onclick="showPage(\'home\')">→ חזרה לתפריט</button><h2>שכר לימוד</h2></div>' +
+      '<div class="qr-card"><h3><i class="bi bi-cash-coin"></i> רישום תשלום/חוב</h3><div class="qr-grid" style="grid-template-columns:1.4fr .9fr .8fr .9fr auto">' +
+        '<select class="inp mb0" id="tStu"><option value="">בחר תלמיד…</option>' + stuOpts + '</select>' +
+        '<input class="inp mb0" id="tMonth" type="month" value="' + ym + '">' +
+        '<input class="inp mb0" id="tAmt" type="number" placeholder="סכום ₪">' +
+        '<select class="inp mb0" id="tStatus"><option value="due">חוב</option><option value="paid">שולם</option></select>' +
+        '<button class="btn-primary sm" id="tSave"><i class="bi bi-plus-lg"></i> הוסף</button>' +
+      '</div></div><div class="table-wrap"><table class="tbl"><thead><tr><th>תלמיד</th><th>חודש</th><th>סכום</th><th>סטטוס</th><th></th></tr></thead><tbody id="tBody"></tbody></table></div>';
+    function draw() {
+      page.querySelector('#tBody').innerHTML = tuition.map(t =>
+        '<tr><td>' + esc(nameOf(t.student_id)) + '</td><td>' + esc(t.month) + '</td><td>' + (t.amount ? '₪' + esc(t.amount) : '') + '</td>' +
+        '<td><button class="chip ' + (t.status === 'paid' ? 'ok' : 'off') + '" data-tog="' + t.id + '">' + (t.status === 'paid' ? 'שולם' : 'חוב') + '</button></td>' +
+        '<td class="row-act"><button class="mini danger" data-del="' + t.id + '"><i class="bi bi-trash"></i></button></td></tr>').join('') ||
+        '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">אין רישומים</td></tr>';
+      page.querySelectorAll('[data-tog]').forEach(b => b.addEventListener('click', async () => { const t = tuition.find(x => x.id == b.dataset.tog); t.status = t.status === 'paid' ? 'due' : 'paid'; await window.store.update('tuition', t.id, { status: t.status }); draw(); }));
+      page.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => { await window.store.remove('tuition', Number(b.dataset.del)); const i = tuition.findIndex(x => x.id == b.dataset.del); if (i >= 0) tuition.splice(i, 1); draw(); window.UI.toast('נמחק'); }));
+    }
+    page.querySelector('#tSave').addEventListener('click', async () => {
+      const sid = page.querySelector('#tStu').value; if (!sid) { window.UI.toast('בחר תלמיד', 'err'); return; }
+      const row = { student_id: Number(sid), month: page.querySelector('#tMonth').value, amount: page.querySelector('#tAmt').value, status: page.querySelector('#tStatus').value };
+      const r = await window.store.add('tuition', row);
+      tuition.push((r.data && r.data[0]) || row);
+      page.querySelector('#tAmt').value = ''; draw(); window.UI.toast('נוסף');
+    });
+    draw();
+  }
+
+  const R = window.PAGE_RENDERERS = window.PAGE_RENDERERS || {};
+  R.settings = renderSettings;
+  R.tuition = renderTuition;
+})();

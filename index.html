@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>מערכת מעקב — תלמוד תורה</title>
+  <meta name="theme-color" content="#123a52">
+  <meta name="description" content="מערכת מעקב התנהגות ולמידה לתלמוד תורה — תלמידים, התנהגות, נוכחות, מבחנים ודוחות. מאובטח, חינם, לשכפול.">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="css/main.css">
+  <!-- שכבת הנתונים המאובטחת (Supabase) — טעונה לפני הסקריפטים שלנו -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="appbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"><i class="bi bi-mortarboard-fill"></i></span>
+      <div class="brand-txt">
+        <strong>מערכת מעקב</strong>
+        <small id="instanceName">תלמוד תורה</small>
+      </div>
+    </div>
+    <div class="appbar-actions">
+      <span id="userInfo" class="user-info" hidden></span>
+      <span id="statusDot" class="status" title="מצב מערכת"><span class="dot"></span><span id="statusTxt">…</span></span>
+      <button class="icon-btn" id="darkBtn" title="מצב לילה/יום" aria-label="החלף מצב תצוגה"><i class="bi bi-moon-stars"></i></button>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="page active" id="page-home">
+      <div class="home-hero">
+        <h1>ברוכים הבאים</h1>
+        <p>מערכת מעקב התנהגות ולמידה — בחרו תחום כדי להתחיל.</p>
+      </div>
+      <div class="tile-grid" id="tileGrid"></div>
+    </section>
+    <div id="pages"></div>
+  </main>
+
+  <footer class="foot">
+    <span>מערכת מעקב · תלמוד תורה · גרסה 0.1 (חלק 1 — שלד)</span>
+    <span class="foot-sep">·</span>
+    <span>נבנה מאובטח מהיסוד · GitHub Pages + Supabase</span>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/students.js"></script>
+  <script src="js/picker.js"></script>
+  <script src="js/behavior.js"></script>
+  <script src="js/tracking.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/forms.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

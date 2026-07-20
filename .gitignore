@@ -1,0 +1,14 @@
+# סודות ונתונים מקומיים — לעולם לא לגיטהב (הגנה על PII של תלמידים)
+js/local-data.js
+local-data.json
+*.local.json
+.env
+.secrets/
+
+# קבצי עבודה פנימיים
+_BUILD_DONE
+_continue_build.py
+_continue_prompt.txt
+_schedule_task.ps1
+_continue_build.log
+_migrate_from_bht.*

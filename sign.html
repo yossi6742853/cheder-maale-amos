@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>חתימת אישור — בית התלמוד</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/config.js"></script>
+</head>
+<body>
+  <div class="sign-wrap">
+    <div class="sign-card">
+      <div class="sign-logo"><i class="bi bi-mortarboard-fill"></i></div>
+      <div class="sign-inst" id="inst"></div>
+      <div id="content"><p style="text-align:center;color:var(--muted)">טוען…</p></div>
+    </div>
+  </div>
+  <script>
+  (function () {
+    const q = new URLSearchParams(location.search);
+    const fid = q.get('f'), token = q.get('t');
+    const C = window.CV3 || {};
+    const content = document.getElementById('content');
+    document.getElementById('inst').textContent = C.INSTANCE_NAME || '';
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const sb = (C.SUPABASE_URL && C.SUPABASE_ANON_KEY && window.supabase)
+      ? window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY) : null;
+
+    if (!fid) { content.innerHTML = '<h2>קישור לא תקין</h2><p>חסר מזהה טופס בקישור.</p>'; return; }
+    if (!sb) {
+      content.innerHTML = '<h2>מצב הדגמה</h2><p>המערכת נמצאת במצב הדגמה. חתימת הורים פעילה במערכת החיה של המוסד (לאחר חיבור Supabase ע״י המנהל).</p>';
+      return;
+    }
+    async function load() {
+      // גישה מאובטחת דרך RPC (SECURITY DEFINER) — לפי טוקן אישי, או לפי מזהה טופס לקישור כללי.
+      let form = null, resp = null;
+      if (token) {
+        const { data } = await sb.rpc('get_signing', { p_token: token });
+        if (data && data[0]) { const d = data[0]; form = { title: d.title, body: d.body }; resp = { status: d.status, signer_name: d.signer_name, signed_at: d.signed_at }; }
+      } else {
+        const { data } = await sb.rpc('get_form', { p_form_id: Number(fid) });
+        if (data && data[0]) form = { title: data[0].title, body: data[0].body };
+      }
+      if (!form) { content.innerHTML = '<h2>הטופס לא נמצא</h2><p>ייתכן שהקישור אינו תקין או שהטופס הוסר.</p>'; return; }
+      render(form, resp);
+    }
+    function render(form, resp) {
+      const signed = resp && resp.status === 'signed';
+      content.innerHTML =
+        '<h2>' + esc(form.title) + '</h2>' +
+        (form.body ? '<p class="sign-body">' + esc(form.body) + '</p>' : '') +
+        (signed
+          ? '<div class="sign-done"><i class="bi bi-check2-circle"></i><div>התקבלה חתימה בתאריך ' + esc(resp.signed_at || '') + ' על-ידי ' + esc(resp.signer_name || '') + '.<br>תודה רבה!</div></div>'
+          : '<label class="fld fld-wide"><span>שם החותם (הורה) *</span><input class="inp" id="sname" placeholder="שם מלא"></label>' +
+            '<button class="btn-primary" id="signBtn" style="width:100%;margin-top:8px"><i class="bi bi-pencil-square"></i> אני מאשר/ת וחותם/ת</button>');
+      const btn = document.getElementById('signBtn');
+      if (btn) btn.addEventListener('click', async () => {
+        const name = document.getElementById('sname').value.trim();
+        if (name.length < 2) { alert('נא להזין שם מלא'); return; }
+        btn.disabled = true;
+        const { data, error } = token
+          ? await sb.rpc('submit_signature', { p_token: token, p_name: name })
+          : await sb.rpc('submit_general', { p_form_id: Number(fid), p_name: name });
+        if (error || data === false) { alert('שגיאה בשמירת החתימה. ייתכן שכבר נחתם.'); btn.disabled = false; return; }
+        render(form, { status: 'signed', signer_name: name, signed_at: new Date().toISOString().slice(0, 10) });
+      });
+    }
+    load();
+  })();
+  </script>
+</body>
+</html>
