@@ -124,3 +124,9 @@ drop policy if exists cal_mod on public.calendar_events;
 create policy cal_mod  on public.calendar_events for update using (public.is_admin() or created_by = auth.uid()) with check (public.is_admin() or created_by = auth.uid());
 drop policy if exists cal_del on public.calendar_events;
 create policy cal_del  on public.calendar_events for delete using (public.is_admin() or created_by = auth.uid());
+
+-- v3 (2026-07-21): כניסה לפי שם — המרת שם → כתובת מייל סינתטית
+create or replace function public.email_by_name(p_name text)
+  returns text language sql stable security definer set search_path = public as
+$$ select email from public.profiles where name = p_name and coalesce(active, true) order by created_at limit 1 $$;
+grant execute on function public.email_by_name(text) to anon, authenticated;

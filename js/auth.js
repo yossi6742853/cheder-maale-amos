@@ -47,7 +47,14 @@
       await setUser({ id: u.id, name: u.name, role: u.role, tz: u.tz, perms: u.perms });
     } else {
       // Supabase: המזהה ממופה למייל סינתטי; הסיסמה מאומתת בצד-שרת (hashed)
-      const email = id.includes('@') ? id : id + '@bht.co.il';
+      // כניסה גמישה: מייל מלא / מספר טלפון / שם (השם נפתר לכתובת דרך RPC email_by_name)
+      let email;
+      if (id.includes('@')) email = id;
+      else if (/^[0-9()+\-\s]+$/.test(id)) email = id.replace(/[^0-9]/g, '') + '@bht.co.il';
+      else {
+        try { const { data } = await window.sb.rpc('email_by_name', { p_name: id }); email = data || (id + '@bht.co.il'); }
+        catch (_) { email = id + '@bht.co.il'; }
+      }
       const { error } = await window.sb.auth.signInWithPassword({ email, password: pw });
       if (error) { msg.textContent = 'שם או סיסמה שגויים.'; return; }
       msg.textContent = '';   // onAuthStateChange יטען את הפרופיל
