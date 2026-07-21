@@ -123,13 +123,28 @@
   const seqs = {};
   if (DEMO) for (const t in mem) seqs[t] = 1 + mem[t].reduce((m, r) => Math.max(m, r.id || 0), 0);
 
+  // כשל קריאה החזיר קודם [] — בדיוק כמו טבלה ריקה. המסך נראה ריק והמשתמש הסיק
+  // שהנתונים נמחקו. מכאן והלאה כשל נראה למשתמש, עם השהיה כדי לא להציף בטוסטים.
+  let lastReadErrorAt = 0;
+  function reportReadFailure(table, err) {
+    console.error('[cheder-v3] קריאה נכשלה מטבלה ' + table + ': ' + err);
+    const now = Date.now();
+    if (now - lastReadErrorAt < 6000) return;
+    lastReadErrorAt = now;
+    if (window.UI && window.UI.toast) window.UI.toast('טעינת הנתונים נכשלה — ייתכן שהמסך אינו מעודכן. רענן.', 'err');
+  }
+
   async function list(table, opts) {
     if (DEMO) { let r = (mem[table] || []).slice(); if (opts && opts.eq) for (const k in opts.eq) r = r.filter(x => x[k] == opts.eq[k]); return r; }
-    const res = await window.db.list(table, opts); return res.data || [];
+    const res = await window.db.list(table, opts);
+    if (!res.ok) reportReadFailure(table, res.error);
+    return res.data || [];
   }
   async function byStudent(table, sid) {
     if (DEMO) return (mem[table] || []).filter(r => r.student_id == sid);
-    const res = await window.db.list(table, { eq: { student_id: sid } }); return res.data || [];
+    const res = await window.db.list(table, { eq: { student_id: sid } });
+    if (!res.ok) reportReadFailure(table, res.error);
+    return res.data || [];
   }
   async function add(table, row) {
     if (DEMO) { row = Object.assign({}, row); if (!seqs[table]) seqs[table] = 1; row.id = seqs[table]++; (mem[table] = mem[table] || []).push(row); return { ok: true, data: [row] }; }

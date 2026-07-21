@@ -173,7 +173,27 @@
     }
   }
 
+  // מסך עצירה כשמוסד חי לא הצליח לטעון את שכבת הנתונים. חוסם כניסה בכוונה:
+  // בלי זה המערכת מציגה תלמידי דוגמה ושומרת לזיכרון בלבד, והמשתמש מגלה
+  // שהנתונים נעלמו רק אחרי שרענן — כלומר אחרי שכבר איבד אותם.
+  function showLoadError(reason) {
+    document.body.innerHTML =
+      '<div class="login-wrap"><div class="login-card">' +
+      '<div class="login-logo" style="background:linear-gradient(135deg,#8e2d20,#c0392b)"><i class="bi bi-wifi-off"></i></div>' +
+      '<h2>אין חיבור לשרת הנתונים</h2>' +
+      '<p class="login-sub">' + String(reason || '') + '</p>' +
+      '<p class="login-hint" style="text-align:right">המערכת נעצרה בכוונה ולא נכנסה למצב הדגמה, כדי שלא יוזנו ' +
+      'נתונים שייעלמו. בדוק את החיבור לאינטרנט ורענן. אם זה חוזר — פנה ליוסף.</p>' +
+      '<button class="btn-primary" style="margin-top:16px" onclick="location.reload()">רענון</button>' +
+      '</div></div>';
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
+    const cfg = window.CV3 || {};
+    if (!cfg.DEMO && (window.CV3_LOAD_ERROR || !window.sb)) {
+      showLoadError(window.CV3_LOAD_ERROR || 'שכבת הנתונים לא אותחלה');
+      return;
+    }
     buildTiles();
     buildPages();
     wireDark();

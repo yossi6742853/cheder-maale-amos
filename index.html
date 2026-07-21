@@ -13,9 +13,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="css/main.css">
-  <!-- שכבת הנתונים המאובטחת (Supabase) — טעונה לפני הסקריפטים שלנו -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <!-- שכבת הנתונים המאובטחת (Supabase) — טעונה לפני הסקריפטים שלנו.
+       מוגשת מקומית ולא מ-CDN: כשה-CDN לא היה נגיש (סינון תוכן/רשת איטית)
+       window.sb נשאר null, המערכת נפלה בשקט למאגר-דמו בזיכרון,
+       והנתונים שהוקלדו נעלמו ברענון. -->
+  <script src="vendor/supabase.js"></script>
+  <script src="vendor/chart.umd.min.js"></script>
 </head>
 <body>
   <header class="appbar">

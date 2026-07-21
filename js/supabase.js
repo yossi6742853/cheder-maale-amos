@@ -9,8 +9,12 @@
     return;
   }
   if (!window.supabase || !window.supabase.createClient) {
-    console.warn('[cheder-v3] ספריית supabase-js לא נטענה (בדוק את ה-CDN ב-index.html).');
+    // מוסד חי שבו ספריית הנתונים לא נטענה. בעבר פשוט המשכנו עם sb=null, והמערכת
+    // נפלה בשקט למאגר-דמו בזיכרון: המשתמש ראה תלמידי דוגמה, הקליד נתונים אמיתיים,
+    // והכול נמחק ברענון. עדיף להיעצר בגלוי מאשר לאבד נתונים בלי שאיש ישים לב.
     window.sb = null;
+    window.CV3_LOAD_ERROR = 'ספריית הנתונים לא נטענה';
+    console.error('[cheder-v3] supabase-js לא נטענה — עוצר כדי לא לאבד נתונים.');
     return;
   }
   window.sb = window.supabase.createClient(c.SUPABASE_URL, c.SUPABASE_ANON_KEY, {
