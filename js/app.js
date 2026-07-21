@@ -71,7 +71,7 @@
           el('span', { class: 'ic', html: '<i class="bi ' + m.icon + '"></i>' }),
           el('div', { html: 'מסך <b>' + m.label + '</b> — השלד מוכן.' }),
           el('div', {}, 'המסך המלא (טפסים, נתונים, פעולות) ייבנה בשלב הבנייה שלו.'),
-          el('span', { class: 'part' }, 'ייבנה בחלק ' + m.part)
+          el('span', { class: 'part' }, 'טוען…')
         )
       );
       host.appendChild(page);

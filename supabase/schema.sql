@@ -1,3 +1,4 @@
+-- DEPRECATED: use setup_all.sql (מקור אמת יחיד)
 -- cheder-v3 · סכמת Supabase (Postgres) — הרץ פעם אחת ב-SQL Editor של פרויקט Supabase חדש.
 -- הנתונים פרטיים ומוגנים ע"י RLS (שומר אבטחה בצד-שרת). ראה policies.sql.
 

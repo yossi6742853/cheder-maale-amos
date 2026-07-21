@@ -32,6 +32,8 @@
     $('#loginPw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
   }
 
+  const DOMAIN = () => (window.CV3 && window.CV3.SYNTH_DOMAIN) || 'bht.co.il';
+
   async function doLogin() {
     const id = ($('#loginTz').value || '').trim();
     const pw = $('#loginPw').value || '';
@@ -50,10 +52,10 @@
       // כניסה גמישה: מייל מלא / מספר טלפון / שם (השם נפתר לכתובת דרך RPC email_by_name)
       let email;
       if (id.includes('@')) email = id;
-      else if (/^[0-9()+\-\s]+$/.test(id)) email = id.replace(/[^0-9]/g, '') + '@bht.co.il';
+      else if (/^[0-9()+\-\s]+$/.test(id)) email = id.replace(/[^0-9]/g, '') + '@' + DOMAIN();
       else {
-        try { const { data } = await window.sb.rpc('email_by_name', { p_name: id }); email = data || (id + '@bht.co.il'); }
-        catch (_) { email = id + '@bht.co.il'; }
+        try { const { data } = await window.sb.rpc('email_by_name', { p_name: id }); email = data || (id + '@' + DOMAIN()); }
+        catch (_) { email = id + '@' + DOMAIN(); }
       }
       const { error } = await window.sb.auth.signInWithPassword({ email, password: pw });
       if (error) { msg.textContent = 'שם או סיסמה שגויים.'; return; }
@@ -101,8 +103,9 @@
     const box = $('#userInfo');
     if (!box) return;
     if (A.currentUser) {
+      const _e = (window.UI && window.UI.esc) || (s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
       box.innerHTML = '<span class="ui-name"><i class="bi bi-person-circle"></i> ' +
-        (A.currentUser.name || '') + ' · ' + (A.currentUser.role || '') + '</span>' +
+        _e(A.currentUser.name || '') + ' · ' + _e(A.currentUser.role || '') + '</span>' +
         '<button class="icon-btn" id="pwBtn" title="שינוי סיסמה" aria-label="שינוי סיסמה"><i class="bi bi-key"></i></button>' +
         '<button class="icon-btn" id="logoutBtn" title="יציאה" aria-label="יציאה"><i class="bi bi-box-arrow-right"></i></button>';
       const pb = $('#pwBtn'); if (pb) pb.addEventListener('click', changeOwnPassword);

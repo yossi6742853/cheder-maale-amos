@@ -130,7 +130,7 @@
             // ── חי: יצירת משתמש אמיתי דרך Supabase Auth (client זמני שלא נוגע בסשן המנהל) ──
             const C = window.CV3 || {};
             const tmp = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
-            const email = phone + '@bht.co.il';
+            const email = phone + '@' + ((window.CV3 && window.CV3.SYNTH_DOMAIN) || 'bht.co.il');
             const password = (pw && pw.length >= 6) ? pw : phone;   // Supabase דורש 6+ תווים; ברירת מחדל = הטלפון
             if (password.length < 6) { window.UI.toast('הטלפון חייב לפחות 6 ספרות (או הזן סיסמה 6+ תווים)', 'err'); return false; }
             const { data, error } = await tmp.auth.signUp({ email, password, options: { data: { name } } });

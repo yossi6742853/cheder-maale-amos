@@ -1,3 +1,4 @@
+-- DEPRECATED: use setup_all.sql (מקור אמת יחיד)
 -- מיגרציה — דרישות עמנואל (הרץ על מאגר Supabase קיים; בטוח להרצה חוזרת)
 alter table public.behavior_events add column if not exists event_time text;
 alter table public.tuition add column if not exists pay_date date;

@@ -1,3 +1,4 @@
+-- DEPRECATED: use setup_all.sql (מקור אמת יחיד)
 -- cheder-v3 · RLS — שומר האבטחה. הרץ אחרי schema.sql.
 -- עיקרון: deny-by-default. מנהל רואה הכל; מורה רק את הכיתות שהוקצו לו; רפואי מוגבל.
 
