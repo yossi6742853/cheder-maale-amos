@@ -275,6 +275,8 @@ body.mode-writeonly #evEmpty, body.mode-writeonly #recEmpty, body.mode-writeonly
    במצב הזנה-בלבד, אחרת המלמד לא יכול לבצע את התפקיד היחיד שהותר לו. */
 body.mode-writeonly .toolbar.entry-ui, body.mode-writeonly .table-wrap.entry-ui{ display:grid !important; }
 body.mode-writeonly .table-wrap.entry-ui{ display:block !important; }
+/* גם סיכום הנוכחות היומי הוא חלק מממשק ההזנה — בלעדיו המלמד מסמן ולא רואה כמה סימן */
+body.mode-writeonly .toolbar.entry-ui .count-line{ display:block !important; }
 /* תצוגת מורים — בית פשוט ויפה */
 .teacher-card{background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow); padding:22px; margin-bottom:18px; border-top:4px solid var(--primary)}
 .teacher-card h3{margin:0 0 14px; font-size:1.15rem; display:flex; align-items:center; gap:8px; color:var(--primary-dark)}

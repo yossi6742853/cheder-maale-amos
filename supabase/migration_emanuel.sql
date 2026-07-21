@@ -20,3 +20,19 @@ drop policy if exists subj_read on public.subjects;
 create policy subj_read on public.subjects for select using (auth.uid() is not null);
 drop policy if exists subj_admin on public.subjects;
 create policy subj_admin on public.subjects for all using (public.is_admin()) with check (public.is_admin());
+
+-- 21-07: created_by נשאר ריק בכל הרישומים — העמודה קיימת בסכימה אך הלקוח
+-- מעולם לא מילא אותה, ולכן ההנהלה לא יכלה לדעת מי דיווח. ברירת מחדל בצד-שרת
+-- ממלאת את זהות המשתמש המחובר, ללא תלות בלקוח. בטוח להרצה חוזרת.
+alter table public.behavior_events alter column created_by set default auth.uid();
+alter table public.attendance alter column created_by set default auth.uid();
+alter table public.tests alter column created_by set default auth.uid();
+alter table public.functioning alter column created_by set default auth.uid();
+alter table public.medications alter column created_by set default auth.uid();
+alter table public.conversations alter column created_by set default auth.uid();
+alter table public.meetings alter column created_by set default auth.uid();
+alter table public.reading alter column created_by set default auth.uid();
+alter table public.writing alter column created_by set default auth.uid();
+alter table public.income alter column created_by set default auth.uid();
+alter table public.expenses alter column created_by set default auth.uid();
+alter table public.forms alter column created_by set default auth.uid();
