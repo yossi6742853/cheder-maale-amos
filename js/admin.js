@@ -10,7 +10,8 @@
   async function renderSettings(page) {
     const [classes, users, access, audit, feedbacks, cats] = await Promise.all([
       window.cv3Students ? window.cv3Students.getClasses() : [],
-      window.store.list('users'), window.store.list('user_class_access'),
+      (async () => { const u = await window.store.list('users'); return u.length ? u : window.store.list('profiles'); })(),
+      window.store.list('user_class_access'),
       window.store.list('audit_log'), window.store.list('feedback'),
       window.store.list('categories'),
     ]);
@@ -62,8 +63,9 @@
         const cls = (u.role === 'מנהל' ? '<span class="tl-note">כל הכיתות</span>' : (userClasses(u.id).map(clsName).filter(Boolean).join(', ') || '—')) +
           (u.role !== 'מנהל' && u.perms && u.perms.length ? ' <span class="det-badge">' + u.perms.length + ' מסכים</span>' : '');
         return '<tr><td>' + esc(u.name) + '</td><td>' + esc(u.phone || u.tz || '') + '</td><td><span class="chip ' + (u.role === 'מנהל' ? 'ok' : 'off') + '">' + esc(u.role) + '</span></td><td>' + cls + '</td>' +
-          '<td class="row-act"><button class="mini" data-uedit="' + u.id + '" title="עריכה"><i class="bi bi-pencil"></i></button><button class="mini danger" data-udel="' + u.id + '" title="מחיקה"><i class="bi bi-trash"></i></button></td></tr>';
+          '<td class="row-act"><button class="mini" data-ucard="' + u.id + '" title="כרטיס איש צוות"><i class="bi bi-person-vcard"></i></button><button class="mini" data-uedit="' + u.id + '" title="עריכה"><i class="bi bi-pencil"></i></button><button class="mini danger" data-udel="' + u.id + '" title="מחיקה"><i class="bi bi-trash"></i></button></td></tr>';
       }).join('');
+      page.querySelectorAll('[data-ucard]').forEach(b => b.addEventListener('click', () => { if (window.cv3StaffCard) window.cv3StaffCard.open(b.dataset.ucard); }));
       page.querySelectorAll('[data-uedit]').forEach(b => b.addEventListener('click', () => openUserForm(users.find(u => u.id == b.dataset.uedit))));
       page.querySelectorAll('[data-udel]').forEach(b => b.addEventListener('click', async () => {
         const u = users.find(x => x.id == b.dataset.udel); if (!u) return;

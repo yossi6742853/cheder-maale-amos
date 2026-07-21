@@ -42,3 +42,79 @@ grant execute on function public.submit_signature(text, text, jsonb, text)      
 -- 4) אינדקסים שימושיים לתצוגות "לפי"
 create index if not exists idx_students_status on public.students(status);
 create index if not exists idx_tuition_student on public.tuition(student_id);
+
+-- ═══════════════════════════════════════════════════════════════
+-- v2 (2026-07-21): משימות, פרויקטים, לוח שנה — טבלאות + RLS מאובטח
+-- ═══════════════════════════════════════════════════════════════
+
+create table if not exists public.projects (
+  id          bigint generated always as identity primary key,
+  name        text not null,
+  description text,
+  status      text not null default 'active',   -- active / done / archived
+  color       text,
+  due_date    date,
+  created_by  uuid references public.profiles(id) on delete set null,
+  created_at  timestamptz not null default now()
+);
+
+create table if not exists public.tasks (
+  id          bigint generated always as identity primary key,
+  title       text not null,
+  description text,
+  project_id  bigint references public.projects(id) on delete set null,
+  assignee    uuid   references public.profiles(id) on delete set null,
+  student_id  bigint references public.students(id) on delete set null,
+  due_date    date,
+  priority    text default 'רגיל',              -- נמוך / רגיל / גבוה
+  status      text not null default 'open',      -- open / in_progress / done
+  created_by  uuid references public.profiles(id) on delete set null,
+  created_at  timestamptz not null default now()
+);
+create index if not exists idx_tasks_status on public.tasks(status);
+create index if not exists idx_tasks_due    on public.tasks(due_date);
+
+create table if not exists public.calendar_events (
+  id          bigint generated always as identity primary key,
+  title       text not null,
+  date        date not null,
+  end_date    date,
+  time        text,
+  kind        text default 'event',              -- event / holiday / meeting / reminder
+  note        text,
+  created_by  uuid references public.profiles(id) on delete set null,
+  created_at  timestamptz not null default now()
+);
+create index if not exists idx_calevents_date on public.calendar_events(date);
+
+alter table public.projects        enable row level security;
+alter table public.tasks           enable row level security;
+alter table public.calendar_events enable row level security;
+
+-- אבטחה: רק צוות מאומת רואה/יוצר; עדכון/מחיקה — היוצר או מנהל (deny-by-default).
+drop policy if exists proj_read on public.projects;
+create policy proj_read on public.projects for select using (auth.uid() is not null);
+drop policy if exists proj_ins on public.projects;
+create policy proj_ins  on public.projects for insert with check (auth.uid() is not null);
+drop policy if exists proj_mod on public.projects;
+create policy proj_mod  on public.projects for update using (public.is_admin() or created_by = auth.uid()) with check (public.is_admin() or created_by = auth.uid());
+drop policy if exists proj_del on public.projects;
+create policy proj_del  on public.projects for delete using (public.is_admin() or created_by = auth.uid());
+
+drop policy if exists task_read on public.tasks;
+create policy task_read on public.tasks for select using (auth.uid() is not null);
+drop policy if exists task_ins on public.tasks;
+create policy task_ins  on public.tasks for insert with check (auth.uid() is not null);
+drop policy if exists task_mod on public.tasks;
+create policy task_mod  on public.tasks for update using (public.is_admin() or created_by = auth.uid() or assignee = auth.uid()) with check (public.is_admin() or created_by = auth.uid() or assignee = auth.uid());
+drop policy if exists task_del on public.tasks;
+create policy task_del  on public.tasks for delete using (public.is_admin() or created_by = auth.uid());
+
+drop policy if exists cal_read on public.calendar_events;
+create policy cal_read on public.calendar_events for select using (auth.uid() is not null);
+drop policy if exists cal_ins on public.calendar_events;
+create policy cal_ins  on public.calendar_events for insert with check (auth.uid() is not null);
+drop policy if exists cal_mod on public.calendar_events;
+create policy cal_mod  on public.calendar_events for update using (public.is_admin() or created_by = auth.uid()) with check (public.is_admin() or created_by = auth.uid());
+drop policy if exists cal_del on public.calendar_events;
+create policy cal_del  on public.calendar_events for delete using (public.is_admin() or created_by = auth.uid());

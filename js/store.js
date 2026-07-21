@@ -97,6 +97,21 @@
       { id: 2, form_id: 1, student_id: 2, status: 'pending', signer_name: '', signed_at: null, token: 'demo2b' },
       { id: 3, form_id: 1, student_id: 3, status: 'pending', signer_name: '', signed_at: null, token: 'demo3c' },
     ],
+    projects: [
+      { id: 1, name: 'הכנות לסיום שנה', description: 'מסיבת סיום + תעודות', status: 'active', color: '#6c3fc0', due_date: daysAgo(-20), created_by: null },
+      { id: 2, name: 'שיפוץ כיתות', description: 'צביעה וריהוט', status: 'active', color: '#1f8a5b', due_date: daysAgo(-40), created_by: null },
+    ],
+    tasks: [
+      { id: 1, title: 'להזמין תעודות', description: 'להדפיס לכל התלמידים', project_id: 1, assignee: 2, student_id: null, due_date: daysAgo(-3), priority: 'גבוה', status: 'open', created_by: null },
+      { id: 2, title: 'לתאם מסיבה', description: '', project_id: 1, assignee: 3, student_id: null, due_date: daysAgo(-7), priority: 'רגיל', status: 'in_progress', created_by: null },
+      { id: 3, title: 'לבדוק אלרגיות לפני טיול', description: '', project_id: null, assignee: 2, student_id: 3, due_date: daysAgo(-1), priority: 'גבוה', status: 'open', created_by: null },
+      { id: 4, title: 'לקנות צבע', description: '', project_id: 2, assignee: 4, student_id: null, due_date: daysAgo(2), priority: 'נמוך', status: 'done', created_by: null },
+    ],
+    calendar_events: [
+      { id: 1, title: 'אסיפת הורים כללית', date: daysAgo(-5), end_date: null, time: '20:00', kind: 'meeting', note: 'בבית הכנסת', created_by: null },
+      { id: 2, title: 'טיול שנתי', date: daysAgo(-14), end_date: null, time: '08:00', kind: 'event', note: '', created_by: null },
+      { id: 3, title: 'ראש חודש', date: daysAgo(-2), end_date: null, time: '', kind: 'holiday', note: '', created_by: null },
+    ],
     feedback: [],
     audit_log: [
       { id: 1, action: 'login', detail: 'מנהל המערכת נכנס', created_at: T() + ' 08:12' },

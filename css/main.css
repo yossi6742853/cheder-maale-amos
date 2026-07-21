@@ -346,3 +346,9 @@ button.chip{border:none; cursor:pointer; font-family:inherit}
 .logo-img{ width:100%; height:100%; object-fit:contain; display:block; border-radius:9px; }
 .login-logo{ background:#fff !important; overflow:hidden; padding:5px; box-shadow:0 4px 14px rgba(0,0,0,.12); }
 .login-logo-img{ width:100%; height:100%; object-fit:contain; display:block; }
+
+/* אריח מודגש (משימות ופרויקטים) */
+.tile-feature{ box-shadow:0 6px 20px color-mix(in srgb, var(--tc) 28%, transparent); border:1.5px solid var(--tc); position:relative; }
+.tile-feature::after{ content:'★'; position:absolute; top:8px; left:10px; color:var(--tc); font-size:.8rem; opacity:.7 }
+/* כותרות קבוצה בקיבוץ */
+.group-sec .group-title{ border-bottom:1px solid var(--line); padding-bottom:3px }

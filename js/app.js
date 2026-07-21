@@ -6,6 +6,8 @@
   // רשימת המודולים — כל אחד יקבל אריח + עמוד. part = באיזה חלק בנייה נבנה בפועל.
   const G1 = 'מעקב ולמידה', G2 = 'תלמיד וקהילה', G3 = 'ניהול ודוחות';
   const MODULES = [
+    // ★ משימות ופרויקטים — מודגש, מסונכרן עם לוח השנה
+    { id: 'tasks',         label: 'משימות ופרויקטים', icon: 'bi-kanban',          group: G1, color: '#6c3fc0', feature: true },
     // מסך מעקב אחד מרכז את הכל — הקטגוריה בוחרת את סוג הרישום (משמעת/כתיבה-קריאה/מוגנות/שיחות...)
     { id: 'behavior',      label: 'מעקב',             icon: 'bi-clipboard-check', group: G1, color: '#c0392b' },
     { id: 'attendance',    label: 'נוכחות',           icon: 'bi-calendar-check',  group: G1, color: '#1f8a5b' },
@@ -44,7 +46,7 @@
       const sec = el('div', { class: 'tile-group' }, el('h3', { class: 'group-title' }, g.name));
       const row = el('div', { class: 'tile-grid-inner' });
       g.items.forEach(m => {
-        const tile = el('a', { class: 'tile', href: '#' + m.id, 'data-id': m.id, style: '--tc:' + m.color },
+        const tile = el('a', { class: 'tile' + (m.feature ? ' tile-feature' : ''), href: '#' + m.id, 'data-id': m.id, style: '--tc:' + m.color },
           el('span', { class: 'ic', html: '<i class="bi ' + m.icon + '"></i>' }),
           el('span', { class: 't' }, m.label),
           el('span', { class: 'tile-arrow', html: '<i class="bi bi-arrow-left-short"></i>' })
