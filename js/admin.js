@@ -70,9 +70,11 @@
       page.querySelectorAll('[data-udel]').forEach(b => b.addEventListener('click', async () => {
         const u = users.find(x => x.id == b.dataset.udel); if (!u) return;
         if (u.role === 'מנהל' && users.filter(x => x.role === 'מנהל').length <= 1) { window.UI.toast('חייב להישאר מנהל אחד לפחות', 'err'); return; }
-        if (!(await window.UI.confirm('למחוק את המשתמש "' + esc(u.name) + '"?'))) return;
-        await window.store.remove('users', u.id); const i = users.indexOf(u); if (i >= 0) users.splice(i, 1);
-        drawUsers(); window.UI.toast('נמחק');
+        const LIVE = !!window.sb;
+        if (!(await window.UI.confirm(LIVE ? ('להשבית את המשתמש "' + esc(u.name) + '"? (לא ניתן למחוק לגמרי משתמש מאומת — הוא יושבת ולא יוכל להיכנס)') : ('למחוק את המשתמש "' + esc(u.name) + '"?')))) return;
+        if (LIVE) { await window.store.update('profiles', u.id, { active: false }); const i = users.indexOf(u); if (i >= 0) users.splice(i, 1); }
+        else { await window.store.remove('users', u.id); const i = users.indexOf(u); if (i >= 0) users.splice(i, 1); }
+        drawUsers(); window.UI.toast(LIVE ? 'המשתמש הושבת' : 'נמחק');
       }));
     }
     function openUserForm(existing) {
@@ -105,16 +107,38 @@
           const chosenPerms = [...mel.querySelectorAll('#permGrid input:checked')].map(c => c.value);
           const allIds = assignable.map(m => m.id);
           // perms=null → ברירת-מחדל לפי התפקיד (roleCaps); רק אם המנהל צמצם ידנית נשמור רשימה
-          const row = { name, phone, role, perms: (role === 'מנהל' || chosenPerms.length >= allIds.length) ? null : chosenPerms };
-          row.password = pw || phone;   // סיסמה ראשונית = טלפון
+          const perms = (role === 'מנהל' || chosenPerms.length >= allIds.length) ? null : chosenPerms;
+          const LIVE = !!window.sb;
           let uid;
-          if (existing) { await window.store.update('users', u.id, row); Object.assign(u, row); uid = u.id; }
-          else { const r = await window.store.add('users', row); const nu = (r.data && r.data[0]) || Object.assign({ id: Date.now() }, row); uid = nu.id; users.push(nu); }
+          if (!LIVE) {
+            // ── מצב הדגמה: טבלת users בזיכרון ──
+            const row = { name, phone, role, perms, password: pw || phone };
+            if (existing) { await window.store.update('users', u.id, row); Object.assign(u, row); uid = u.id; }
+            else { const r = await window.store.add('users', row); const nu = (r.data && r.data[0]) || Object.assign({ id: Date.now() }, row); uid = nu.id; users.push(nu); }
+          } else if (existing) {
+            // ── חי: עדכון פרופיל קיים (שם/תפקיד/הרשאות) ──
+            await window.store.update('profiles', u.id, { name, role, tz: phone, perms });
+            Object.assign(u, { name, role, tz: phone, perms }); uid = u.id;
+          } else {
+            // ── חי: יצירת משתמש אמיתי דרך Supabase Auth (client זמני שלא נוגע בסשן המנהל) ──
+            const C = window.CV3 || {};
+            const tmp = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+            const email = phone + '@bht.co.il';
+            const { data, error } = await tmp.auth.signUp({ email, password: pw || phone, options: { data: { name } } });
+            if (error) { window.UI.toast('שגיאה ביצירת משתמש: ' + error.message, 'err'); return false; }
+            uid = data && data.user && data.user.id;
+            if (!uid) { window.UI.toast('המשתמש לא נוצר (אולי המספר כבר קיים)', 'err'); return false; }
+            await new Promise(r => setTimeout(r, 500));   // המתנה לטריגר שיוצר את הפרופיל
+            const upd = await window.store.update('profiles', uid, { name, role, tz: phone, perms });
+            if (upd && upd.ok === false) { window.UI.toast('המשתמש נוצר אך עדכון הפרופיל נכשל: ' + (upd.error || ''), 'err'); }
+            users.push({ id: uid, name, phone, tz: phone, role, perms });
+          }
           const chosen = [...mel.querySelectorAll('#classGrid input:checked')].map(c => Number(c.value));
           for (const a of access.filter(a => a.user_id == uid)) await window.store.remove('user_class_access', a.id);
           for (let i = access.length - 1; i >= 0; i--) if (access[i].user_id == uid) access.splice(i, 1);
           for (const cid of chosen) { const r = await window.store.add('user_class_access', { user_id: uid, class_id: cid }); access.push((r.data && r.data[0]) || { user_id: uid, class_id: cid }); }
-          drawUsers(); window.UI.toast(existing ? 'המשתמש עודכן' : 'משתמש נוסף');
+          drawUsers();
+          window.UI.toast(existing ? 'המשתמש עודכן' : ('משתמש נוסף — כניסה: ' + phone + ' · סיסמה: ' + (pw || phone)));
           return true;
         },
       });
