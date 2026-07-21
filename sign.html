@@ -189,7 +189,7 @@
         if (token) {
           res = await sb.rpc('submit_signature', { p_token: token, p_name: name, p_answers: answers, p_signature: sigDataUrl || null });
         } else {
-          res = await sb.rpc('submit_general', { p_form_id: Number(fid), p_name: name });
+          res = await sb.rpc('submit_general', { p_form_id: Number(fid), p_name: name, p_answers: answers, p_signature: sigDataUrl || null });
         }
         if (res.error || res.data === false) { alert('שגיאה בשמירת החתימה. ייתכן שכבר נחתם.'); btn.disabled = false; return; }
         render(form, { status: 'signed', signer_name: name, signed_at: new Date().toISOString().slice(0, 10), answers: answers, signature: sigDataUrl });

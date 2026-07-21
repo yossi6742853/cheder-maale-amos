@@ -130,3 +130,17 @@ create or replace function public.email_by_name(p_name text)
   returns text language sql stable security definer set search_path = public as
 $$ select email from public.profiles where name = p_name and coalesce(active, true) order by created_at limit 1 $$;
 grant execute on function public.email_by_name(text) to anon, authenticated;
+
+-- v4 (2026-07-21): גם הקישור הכללי (בלי טוקן) ישמור תשובות+חתימה
+drop function if exists public.submit_general(bigint, text);
+drop function if exists public.submit_general(bigint, text, jsonb, text);
+create or replace function public.submit_general(p_form_id bigint, p_name text, p_answers jsonb default null, p_signature text default null)
+  returns boolean language plpgsql security definer set search_path = public as
+$$ begin
+  if length(coalesce(p_name,'')) < 2 then return false; end if;
+  if not exists (select 1 from public.forms where id = p_form_id) then return false; end if;
+  insert into public.form_responses(form_id, status, signer_name, signed_at, token, answers, signature)
+    values (p_form_id, 'signed', p_name, current_date, 'web-'||md5(random()::text||clock_timestamp()::text), p_answers, p_signature);
+  return true;
+end $$;
+grant execute on function public.submit_general(bigint, text, jsonb, text) to anon, authenticated;
