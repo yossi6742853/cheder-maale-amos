@@ -340,3 +340,9 @@ button.chip{border:none; cursor:pointer; font-family:inherit}
   .user-info .ui-name{max-width:88px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .head-actions{width:100%}
 }
+
+/* לוגו החיידר (תמונה אמיתית מהגרסה הקודמת) */
+.logo{ overflow:hidden; background:#fff; padding:2px; }
+.logo-img{ width:100%; height:100%; object-fit:contain; display:block; border-radius:9px; }
+.login-logo{ background:#fff !important; overflow:hidden; padding:5px; box-shadow:0 4px 14px rgba(0,0,0,.12); }
+.login-logo-img{ width:100%; height:100%; object-fit:contain; display:block; }

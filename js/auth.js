@@ -14,7 +14,7 @@
     sec.id = 'page-login';
     sec.innerHTML =
       '<div class="login-wrap"><div class="login-card">' +
-        '<div class="login-logo"><i class="bi bi-mortarboard-fill"></i></div>' +
+        '<div class="login-logo"><img src="img/logo.png" alt="לוגו החיידר" class="login-logo-img"></div>' +
         '<h2>כניסה למערכת</h2>' +
         '<p class="login-sub">מערכת מעקב — תלמוד תורה</p>' +
         '<label class="lbl">שם משתמש</label>' +
