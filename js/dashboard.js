@@ -18,7 +18,8 @@
     const vals = catRows.map(c => behS.filter(e => e.category_id === c.id).length);
     page.innerHTML =
       '<div class="page-head"><button class="back" onclick="showPage(\'home\')">→ חזרה לתפריט</button><h2>דשבורד ודוחות</h2>' +
-      '<div class="head-actions"><button class="btn-ghost sm" id="rpPrint"><i class="bi bi-printer"></i> הדפסה / PDF</button></div></div>' +
+      '<div class="head-actions"><button class="btn-ghost sm" id="rpExport"><i class="bi bi-download"></i> ייצוא דוח (Excel/CSV)</button>' +
+      '<button class="btn-ghost sm" id="rpPrint"><i class="bi bi-printer"></i> הדפסה / PDF</button></div></div>' +
       '<div class="stat-row">' +
         statCard('bi-people-fill', stats.students, 'תלמידים') +
         statCard('bi-clipboard-check', stats.behavior, 'דיווחי התנהגות') +
@@ -37,6 +38,25 @@
       '<div class="tl-item" style="margin-bottom:6px"><span class="ava">' + esc((s.name || '?').slice(0, 2)) + '</span><div class="tl-main">' + esc(s.name) + '</div></div>').join('')
       : '<div class="empty-state" style="padding:18px">אין התראות</div>';
     page.querySelector('#rpPrint').addEventListener('click', () => window.print());
+    // ייצוא דוח דשבורד ל-Excel/CSV (בקשת עמנואל: בדשבורד דוחות לא היה ייצוא)
+    const hebDate = iso => { if (!iso) return ''; try { return new Intl.DateTimeFormat('he-u-ca-hebrew', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso + 'T00:00:00')); } catch (_) { return ''; } };
+    const nameOf = id => { const s = studs.find(x => x.id == id); return s ? s.name : '—'; };
+    const catName = id => { const c = catRows.find(x => x.id == id); return c ? c.name : ''; };
+    page.querySelector('#rpExport').addEventListener('click', () => {
+      const rows = [];
+      rows.push(['סיכום דוח דשבורד']);
+      rows.push(['תלמידים', stats.students], ['דיווחי התנהגות', stats.behavior], ['נוכחות היום', stats.attendance], ['מבחנים', stats.tests]);
+      rows.push([]);
+      rows.push(['התנהגות לפי קטגוריה']);
+      cats.forEach((c, i) => rows.push([c, vals[i]]));
+      rows.push([]);
+      rows.push(['פירוט דיווחי התנהגות']);
+      rows.push(['תלמיד', 'קטגוריה', 'תאריך', 'תאריך עברי', 'שעה', 'הערה']);
+      behS.slice().reverse().forEach(e => rows.push([nameOf(e.student_id), catName(e.category_id), e.event_date || '', hebDate(e.event_date), e.event_time || '', e.note || '']));
+      const csv = rows.map(r => r.map(v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"').join(',')).join('\n');
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'dashboard_report.csv'; a.click();
+    });
     // chart
     if (window.Chart) {
       const ctx = page.querySelector('#behChart');

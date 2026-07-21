@@ -5,6 +5,8 @@
   const DEMO = !window.sb;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const isAdmin = () => !!(window.currentUser && window.currentUser.role === 'מנהל');
+  const hebDate = iso => { if (!iso) return ''; try { return new Intl.DateTimeFormat('he-u-ca-hebrew', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso + 'T00:00:00')); } catch (_) { return ''; } };
 
   const sevClass = s => s === 'גבוהה' ? 'hi' : s === 'נמוכה' ? 'lo' : 'mid';
 
@@ -35,8 +37,9 @@
         '<div class="qr-grid" style="grid-template-columns:repeat(3,1fr) auto">' +
           pickAdd +
           '<div style="display:flex;gap:6px"><select class="inp mb0" id="qCat" style="flex:1"><option value="">קטגוריה…</option>' + catOpts + '</select>' +
-            '<button class="btn-ghost sm" id="qCatAdd" type="button" title="הוסף קטגוריה"><i class="bi bi-plus-lg"></i></button></div>' +
-          '<input class="inp mb0" id="qDate" type="date" value="' + today() + '" title="תאריך">' +
+            (isAdmin() ? '<button class="btn-ghost sm" id="qCatAdd" type="button" title="הוסף קטגוריה"><i class="bi bi-plus-lg"></i></button>' : '') + '</div>' +
+          '<div style="display:flex;flex-direction:column;gap:2px"><input class="inp mb0" id="qDate" type="date" value="' + today() + '" title="תאריך">' +
+            '<span class="heb-date" id="qDateHeb" style="font-size:.72rem;color:var(--muted,#888);padding-right:2px"></span></div>' +
           '<input class="inp mb0" id="qTime" type="time" title="שעה">' +
           '<input class="inp mb0 fld-wide" id="qNote" placeholder="הערה" style="grid-column:1/-2">' +
           '<button class="btn-primary sm" id="qSave"><i class="bi bi-plus-lg"></i> רישום</button>' +
@@ -49,8 +52,13 @@
 
     const pick = window.cv3Picker.wire(page, 'q');
     const fpick = window.cv3Picker.wire(page, 'f', () => draw());
-    // הוספת קטגוריה מהירה תוך כדי דיווח (נשמרת גם לניהול הקטגוריות)
-    page.querySelector('#qCatAdd').addEventListener('click', () => {
+    // תאריך עברי חי ליד בורר התאריך (בקשת עמנואל)
+    const qDateEl = page.querySelector('#qDate'), qDateHeb = page.querySelector('#qDateHeb');
+    const syncHeb = () => { if (qDateHeb) qDateHeb.textContent = hebDate(qDateEl.value); };
+    if (qDateEl) { qDateEl.addEventListener('change', syncHeb); syncHeb(); }
+    // הוספת קטגוריה מהירה — למנהל בלבד (בקשת עמנואל: לחסום למחנך)
+    const qCatAddBtn = page.querySelector('#qCatAdd');
+    if (qCatAddBtn) qCatAddBtn.addEventListener('click', () => {
       window.UI.modal({
         title: 'קטגוריה חדשה', saveLabel: 'הוסף',
         bodyHTML: '<div class="form-grid"><label class="fld fld-wide"><span>שם הקטגוריה *</span><input class="inp mb0" id="nc_name" autofocus></label></div>',
@@ -77,7 +85,7 @@
         '<div class="tl-item"><span class="sev-dot ' + sevClass(e.severity) + '"></span>' +
         '<div class="tl-main"><strong>' + esc(nameOf(e.student_id)) + '</strong> · ' + esc(catOf(e.category_id)) +
         (e.note ? ' <span class="tl-note">— ' + esc(e.note) + '</span>' : '') + '</div>' +
-        '<div class="tl-meta">' + esc(e.event_date) + (e.event_time ? ' · ' + esc(e.event_time) : '') + '</div>' +
+        '<div class="tl-meta">' + esc(hebDate(e.event_date) || e.event_date) + (e.event_time ? ' · ' + esc(e.event_time) : '') + '</div>' +
         '<button class="mini danger" data-del="' + e.id + '"><i class="bi bi-trash"></i></button></div>').join('');
       page.querySelector('#evCount').textContent = rows.length + ' דיווחים';
       page.querySelector('#evEmpty').hidden = rows.length > 0;

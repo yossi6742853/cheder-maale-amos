@@ -81,6 +81,7 @@
     const u = window.currentUser, th = $('#teacherHome'), tg = $('#tileGrid'), hero = document.querySelector('.home-hero');
     if (!th || !tg) return;
     const isTeacher = u && (u.role === 'מלמד' || u.role === 'מחנך');
+    const hr = $('#homeReports'); if (hr) hr.innerHTML = '';
     if (isTeacher && window.renderTeacherHome) {
       tg.style.display = 'none'; th.style.display = '';
       if (hero) { hero.querySelector('h1').textContent = 'שלום ' + (u.name || ''); hero.querySelector('p').textContent = 'רישום מהיר לתלמידים — פשוט ומהיר.'; }
@@ -88,9 +89,46 @@
     } else {
       tg.style.display = ''; th.style.display = 'none'; th.innerHTML = '';
       if (hero) { hero.querySelector('h1').textContent = 'ברוכים הבאים'; hero.querySelector('p').textContent = 'מערכת מעקב — בחרו תחום כדי להתחיל.'; }
+      renderHomeReports();
     }
   }
   window.updateHomeMode = updateHomeMode;
+
+  // דיווחים אחרונים + באנר "דיווח חדש" בדף הבית (בקשת עמנואל 20/07).
+  const _esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function hebDate(iso) {
+    if (!iso) return '';
+    try { return new Intl.DateTimeFormat('he-u-ca-hebrew', { day: 'numeric', month: 'long' }).format(new Date(iso + 'T00:00:00')); } catch (_) { return ''; }
+  }
+  async function renderHomeReports() {
+    const box = $('#homeReports'); if (!box || !window.store) return;
+    box.innerHTML = '<div class="qr-card home-report-banner"><div class="hrb-head">' +
+      '<h3 style="margin:0"><i class="bi bi-clipboard-check"></i> דיווחים אחרונים</h3>' +
+      '<button class="btn-primary sm" id="homeNewReport"><i class="bi bi-plus-lg"></i> דיווח חדש</button></div>' +
+      '<div id="homeReportList"><div class="empty-state" style="padding:12px">טוען…</div></div>' +
+      '<div style="text-align:center;margin-top:8px"><a href="#behavior" class="btn-ghost sm" id="homeAllReports">כל הדיווחים ←</a></div></div>';
+    const nb = $('#homeNewReport'); if (nb) nb.addEventListener('click', () => showPage('behavior'));
+    const al = $('#homeAllReports'); if (al) al.addEventListener('click', (e) => { e.preventDefault(); showPage('behavior'); });
+    try {
+      const [studs, cats, evs] = await Promise.all([
+        (window.cv3Students ? window.cv3Students.getStudents() : Promise.resolve([])),
+        window.store.list('categories'), window.store.list('behavior_events')
+      ]);
+      let rows = evs.slice().reverse();
+      const ids = window.cv3Students ? await window.cv3Students.accessibleIds() : null;
+      if (ids) rows = rows.filter(e => ids.includes(e.student_id));
+      rows = rows.slice(0, 6);
+      const nameOf = id => { const s = studs.find(x => x.id == id); return s ? s.name : '—'; };
+      const catOf = id => { const c = cats.find(x => x.id == id); return c ? c.name : ''; };
+      const list = $('#homeReportList');
+      list.innerHTML = rows.length ? rows.map(e =>
+        '<div class="tl-item"><span class="sev-dot mid"></span><div class="tl-main"><strong>' + _esc(nameOf(e.student_id)) + '</strong> · ' + _esc(catOf(e.category_id)) +
+        (e.note ? ' <span class="tl-note">— ' + _esc(e.note) + '</span>' : '') + '</div>' +
+        '<div class="tl-meta">' + _esc(hebDate(e.event_date) || e.event_date || '') + (e.event_time ? ' · ' + _esc(e.event_time) : '') + '</div></div>').join('')
+        : '<div class="empty-state" style="padding:12px"><i class="bi bi-clipboard-check"></i><div>אין דיווחים עדיין — הקש "דיווח חדש"</div></div>';
+    } catch (e) { console.warn('homeReports', e); const l = $('#homeReportList'); if (l) l.innerHTML = ''; }
+  }
+  window.renderHomeReports = renderHomeReports;
 
   function showPage(id) {
     if (id && (window.MODULES || []).some(m => m.id === id) && window.Auth && window.Auth.currentUser && !window.Auth.canAccess(id)) {
