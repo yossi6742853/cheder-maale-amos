@@ -81,12 +81,14 @@
     const state = {};
     page.innerHTML =
       '<div class="page-head"><button class="back" onclick="showPage(\'home\')">→ חזרה לתפריט</button><h2>נוכחות</h2></div>' +
-      '<div class="toolbar" style="grid-template-columns:auto auto 1fr auto">' +
+      // entry-ui: במסך הנוכחות הטבלה והסרגל *הם* טופס ההזנה, ולא תצוגת נתונים.
+      // בלי הסימון הזה מצב "הזנה בלבד" (מלמד) הסתיר אותם ומנע ממנו לרשום נוכחות כלל.
+      '<div class="toolbar entry-ui" style="grid-template-columns:auto auto 1fr auto">' +
         '<input type="date" class="inp mb0" id="attDate" value="' + today() + '">' +
         '<select class="inp mb0" id="attClass"><option value="">כל הכיתות</option>' + clsOpts + '</select>' +
         '<input type="search" class="inp mb0" id="attSearch" placeholder="🔍 חיפוש תלמיד…">' +
         '<span class="count-line" id="attSum" style="align-self:center"></span></div>' +
-      '<div class="table-wrap"><table class="tbl"><thead><tr><th>תלמיד</th><th>נוכחות</th></tr></thead><tbody id="attBody"></tbody></table></div>';
+      '<div class="table-wrap entry-ui"><table class="tbl"><thead><tr><th>תלמיד</th><th>נוכחות</th></tr></thead><tbody id="attBody"></tbody></table></div>';
     function visible() {
       const cid = page.querySelector('#attClass').value, q = (page.querySelector('#attSearch').value || '').trim();
       return studs.filter(s => (!cid || String(s.class_id) === cid) && (!q || (s.name || '').includes(q)));
