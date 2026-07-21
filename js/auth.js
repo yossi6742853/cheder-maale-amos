@@ -172,8 +172,12 @@
       if (session && session.user) await loadProfile(session.user);
       else if (window.showPage) window.showPage('login');
       window.sb.auth.onAuthStateChange(async (_e, s) => {
-        if (s && s.user) await loadProfile(s.user);
-        else { A.currentUser = null; window.currentUser = null; renderUserInfo(); if (window.showPage) window.showPage('login'); }
+        if (s && s.user) {
+          // אל תטען מחדש ואל תחזור לבית אם זה אותו משתמש (רענון טוקן/מעבר טאב מפעילים את האירוע הזה) — רק אם התחלף
+          if (!A.currentUser || A.currentUser.id !== s.user.id) await loadProfile(s.user);
+        } else if (A.currentUser) {
+          A.currentUser = null; window.currentUser = null; renderUserInfo(); if (window.showPage) window.showPage('login');
+        }
       });
     } catch (_) { if (window.showPage) window.showPage('login'); }
   }
