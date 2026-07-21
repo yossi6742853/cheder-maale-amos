@@ -11,6 +11,12 @@ alter table public.form_responses add column if not exists answers jsonb;     --
 alter table public.form_responses add column if not exists signature text;    -- ציור חתימה (data:image/png;base64,...)
 
 -- 3) פונקציות החתימה הציבוריות — לעדכן שיחזירו/יקבלו גם fields/answers/signature
+-- חובה למחוק קודם: שינינו את סוג-ההחזרה/החתימה, ו-Postgres לא מרשה CREATE OR REPLACE על שינוי כזה
+drop function if exists public.get_signing(text);
+drop function if exists public.get_form(bigint);
+drop function if exists public.submit_signature(text, text);
+drop function if exists public.submit_signature(text, text, jsonb, text);
+
 create or replace function public.get_signing(p_token text)
   returns table(form_id bigint, title text, body text, fields jsonb, status text, signer_name text, signed_at date, answers jsonb, signature text)
   language sql stable security definer set search_path = public as
