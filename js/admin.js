@@ -82,7 +82,9 @@
       const uc = existing ? userClasses(u.id) : [];
       const clsBoxes = classes.map(c => '<label class="cb"><input type="checkbox" value="' + c.id + '"' + (uc.includes(c.id) ? ' checked' : '') + '> ' + esc(c.name) + '</label>').join('');
       const assignable = (window.MODULES || []).filter(m => !m.adminOnly);
-      const up = (existing && u.perms && u.perms.length) ? u.perms : assignable.map(m => m.id);
+      // ברירת מחדל של מסכים לפי התפקיד (null = כל המסכים, כמו מנהל/מפקח); ניתן להתאמה אישית
+      const roleDefPerms = r => { try { const c = window.roleCaps && window.roleCaps(r); return c ? c.perms : null; } catch (_) { return null; } };
+      const up = (existing && u.perms && u.perms.length) ? u.perms : (roleDefPerms(u.role || 'מחנך') || assignable.map(m => m.id));
       const permBoxes = assignable.map(m => '<label class="cb"><input type="checkbox" value="' + m.id + '"' + (up.includes(m.id) ? ' checked' : '') + '> ' + esc(m.label) + '</label>').join('');
       const mm = window.UI.modal({
         title: existing ? 'עריכת משתמש והרשאות' : 'משתמש חדש', saveLabel: 'שמירה',
@@ -111,7 +113,8 @@
           const chosenPerms = [...mel.querySelectorAll('#permGrid input:checked')].map(c => c.value);
           const allIds = assignable.map(m => m.id);
           // perms=null → ברירת-מחדל לפי התפקיד (roleCaps); רק אם המנהל צמצם ידנית נשמור רשימה
-          const perms = (role === 'מנהל' || chosenPerms.length >= allIds.length) ? null : chosenPerms;
+          // שמירה מפורשת: מה שסומן = מה שהמשתמש רואה (מנהל=null=הכל). כך שליטה מדויקת מסך-מסך.
+          const perms = (role === 'מנהל') ? null : chosenPerms;
           const LIVE = !!window.sb;
           let uid;
           if (!LIVE) {
@@ -153,7 +156,15 @@
       mm.el.querySelector('#permAll').addEventListener('click', () => pg.querySelectorAll('input').forEach(c => c.checked = true));
       mm.el.querySelector('#permNone').addEventListener('click', () => pg.querySelectorAll('input').forEach(c => c.checked = false));
       const toggleAdmin = () => { const dis = roleSel.value === 'מנהל'; mm.el.querySelectorAll('#permGrid input, #classGrid input, #permAll, #permNone').forEach(el => { el.disabled = dis; }); };
-      roleSel.addEventListener('change', toggleAdmin); toggleAdmin();
+      // בשינוי תפקיד — עדכן את הסימונים לברירת-המחדל של התפקיד החדש (המנהל יכול אחר-כך להתאים ידנית)
+      roleSel.addEventListener('change', () => {
+        toggleAdmin();
+        if (roleSel.value !== 'מנהל') {
+          const rd = roleDefPerms(roleSel.value) || assignable.map(m => m.id);
+          pg.querySelectorAll('input').forEach(c => { c.checked = rd.includes(c.value); });
+        }
+      });
+      toggleAdmin();
       // הצג/הסתר סיסמה (המנהל רשאי לראות ולערוך את סיסמת המשתמש)
       const pwInp = mm.el.querySelector('#u_pw'), pwBtn = mm.el.querySelector('#u_pw_show');
       if (pwBtn) pwBtn.addEventListener('click', () => { const t = pwInp.type === 'password'; pwInp.type = t ? 'text' : 'password'; pwBtn.innerHTML = '<i class="bi bi-eye' + (t ? '-slash' : '') + '"></i>'; });
