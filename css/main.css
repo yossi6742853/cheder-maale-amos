@@ -264,6 +264,8 @@ body.mode-readonly .att-btn, body.mode-readonly .row-act,
 body.mode-readonly #qCatAdd, body.mode-readonly #stuAdd, body.mode-readonly #usrAdd,
 body.mode-readonly .det-actions{ display:none !important; }
 body.mode-readonly .qr-card input, body.mode-readonly .qr-card select, body.mode-readonly .qr-card textarea{ pointer-events:none; opacity:.6; }
+/* חריג — פעולות אישיות (שינוי סיסמה) חייבות לעבוד בכל מצב, גם בצפייה-בלבד */
+body.mode-readonly .btn-primary.always-on, body.mode-writeonly .btn-primary.always-on{ display:inline-flex !important; }
 /* מצב הזנה-בלבד (מלמד) — טופס הזנה בלבד, בלי צפייה ברשימות/דוחות */
 body.mode-writeonly #timeline, body.mode-writeonly .table-wrap, body.mode-writeonly #recList,
 body.mode-writeonly #logList, body.mode-writeonly .dash-grid, body.mode-writeonly .stat-row,

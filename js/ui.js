@@ -13,7 +13,7 @@
       '<div class="modal-body"></div>' +
       '<div class="modal-foot">' +
       '<button class="btn-ghost" data-act="cancel">ביטול</button>' +
-      (opts.onSave ? '<button class="btn-primary sm" data-act="save">' + (opts.saveLabel || 'שמירה') + '</button>' : '') +
+      (opts.onSave ? '<button class="btn-primary sm' + (opts.saveAlways ? ' always-on' : '') + '" data-act="save">' + (opts.saveLabel || 'שמירה') + '</button>' : '') +
       '</div>';
     card.querySelector('.modal-body').innerHTML = opts.bodyHTML || '';
     ov.appendChild(card);

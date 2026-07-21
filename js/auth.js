@@ -115,7 +115,7 @@
   function changeOwnPassword() {
     const u = A.currentUser; if (!u) return;
     window.UI.modal({
-      title: 'שינוי הסיסמה שלי', saveLabel: 'עדכן סיסמה',
+      title: 'שינוי הסיסמה שלי', saveLabel: 'עדכן סיסמה', saveAlways: true,
       bodyHTML: '<div class="form-grid">' +
         '<label class="fld fld-wide"><span>סיסמה חדשה *</span><input class="inp mb0" id="cp_new" type="password" autocomplete="new-password"></label>' +
         '<label class="fld fld-wide"><span>אימות סיסמה *</span><input class="inp mb0" id="cp_conf" type="password" autocomplete="new-password"></label>' +
