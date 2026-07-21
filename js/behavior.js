@@ -142,27 +142,27 @@
         '<div class="page-head"><button class="back" onclick="showPage(\'home\')">→ חזרה לתפריט</button><h2>' + title + '</h2></div>' +
         '<div class="qr-card"><h3><i class="bi ' + icon + '"></i> רישום חדש</h3><div class="qr-grid">' +
           pickHtml +
-          '<input class="inp mb0" id="lLevel" placeholder="רמה / הישג">' +
-          '<input class="inp mb0" id="lNote" placeholder="הערה (רשות)">' +
-          '<button class="btn-primary sm" id="lSave"><i class="bi bi-plus-lg"></i> הוסף</button>' +
-        '</div></div><div id="logList"></div>' +
-        '<div id="logEmpty" class="empty-state" hidden><i class="bi ' + icon + '"></i><div>אין רישומים עדיין</div></div>';
+          '<input class="inp mb0" id="lLevel-' + uid + '" placeholder="רמה / הישג">' +
+          '<input class="inp mb0" id="lNote-' + uid + '" placeholder="הערה (רשות)">' +
+          '<button class="btn-primary sm" id="lSave-' + uid + '"><i class="bi bi-plus-lg"></i> הוסף</button>' +
+        '</div></div><div id="logList-' + uid + '"></div>' +
+        '<div id="logEmpty-' + uid + '" class="empty-state" hidden><i class="bi ' + icon + '"></i><div>אין רישומים עדיין</div></div>';
       const pick = window.cv3Picker.wire(page, 'l');
       let data = await window.store.list(table);
       const _ids = window.cv3Students ? await window.cv3Students.accessibleIds() : null;
       if (_ids) data = data.filter(x => _ids.includes(x.student_id));
       function draw() {
-        page.querySelector('#logList').innerHTML = data.slice().reverse().map(x =>
+        page.querySelector('#logList-' + uid).innerHTML = data.slice().reverse().map(x =>
           '<div class="tl-item"><span class="sev-dot mid"></span><div class="tl-main"><strong>' + esc(nameOf(x.student_id)) + '</strong> · ' + esc(x.level) +
           (x.note ? ' <span class="tl-note">— ' + esc(x.note) + '</span>' : '') + '</div><div class="tl-meta">' + esc(x.date) + '</div></div>').join('');
-        page.querySelector('#logEmpty').hidden = data.length > 0;
+        page.querySelector('#logEmpty-' + uid).hidden = data.length > 0;
       }
-      page.querySelector('#lSave').addEventListener('click', async () => {
+      page.querySelector('#lSave-' + uid).addEventListener('click', async () => {
         const sid = pick.value(); if (!sid) { window.UI.toast('בחר תלמיד', 'err'); return; }
-        const row = { student_id: Number(sid), level: page.querySelector('#lLevel').value.trim(), note: page.querySelector('#lNote').value.trim(), date: today() };
+        const row = { student_id: Number(sid), level: page.querySelector('#lLevel-' + uid).value.trim(), note: page.querySelector('#lNote-' + uid).value.trim(), date: today() };
         const r = await window.store.add(table, row);
         data = data.concat([(r.data && r.data[0]) || row]);
-        page.querySelector('#lLevel').value = ''; page.querySelector('#lNote').value = '';
+        page.querySelector('#lLevel-' + uid).value = ''; page.querySelector('#lNote-' + uid).value = '';
         draw(); window.UI.toast('נוסף');
       });
       draw();

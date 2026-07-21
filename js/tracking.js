@@ -23,33 +23,37 @@
       const nameOf = id => { const s = studs.find(x => x.id == id); return s ? s.name : '—'; };
       const rows = await list(cfg.table);
       const pickHtml = await window.cv3Picker.html(cfg.table);
+      // מחולל הרשומות משמש כמה מודולים (מבחנים, רפואי, שיחות, אסיפות, תפקוד),
+      // וכולם קיימים ב-DOM במקביל. מזהים קבועים יצרו כפילות ב-HTML, כך ש-
+      // document.querySelector('#recSave') החזיר את הכפתור של מסך אחר.
+      const uid = cfg.table;
       const fieldsHtml = cfg.fields.map(f =>
         '<input class="inp mb0' + (f.wide ? ' fld-wide' : '') + '" data-f="' + f.k + '" placeholder="' + esc(f.label) + '"' + (f.type === 'number' ? ' type="number"' : '') + '>').join('');
       page.innerHTML =
         '<div class="page-head"><button class="back" onclick="showPage(\'home\')">→ חזרה לתפריט</button><h2>' + cfg.title + '</h2>' +
-        '<div class="head-actions"><button class="btn-ghost sm" id="recCsv"><i class="bi bi-download"></i> ייצוא CSV</button></div></div>' +
+        '<div class="head-actions"><button class="btn-ghost sm" id="recCsv-' + uid + '"><i class="bi bi-download"></i> ייצוא CSV</button></div></div>' +
         (cfg.restricted ? '<div class="demo-note" style="margin:0 2px 12px"><i class="bi bi-shield-lock"></i> מידע רגיש — הגישה מוגבלת לתפקידים מורשים (נאכף ע"י ה-RLS בצד-שרת).</div>' : '') +
         '<div class="qr-card"><h3><i class="bi ' + cfg.icon + '"></i> רישום חדש</h3><div class="qr-grid" style="grid-template-columns:repeat(' + cfg.fields.length + ',1fr) auto">' +
           pickHtml +
           fieldsHtml +
-          '<button class="btn-primary sm" id="recSave"><i class="bi bi-plus-lg"></i> הוסף</button>' +
+          '<button class="btn-primary sm" id="recSave-' + uid + '"><i class="bi bi-plus-lg"></i> הוסף</button>' +
         '</div></div>' +
-        '<div id="recList"></div>' +
-        '<div id="recEmpty" class="empty-state" hidden><i class="bi ' + cfg.icon + '"></i><div>אין רישומים עדיין</div></div>';
+        '<div id="recList-' + uid + '"></div>' +
+        '<div id="recEmpty-' + uid + '" class="empty-state" hidden><i class="bi ' + cfg.icon + '"></i><div>אין רישומים עדיין</div></div>';
       const pick = window.cv3Picker.wire(page, cfg.table);
       let data = rows;
       function draw() {
-        page.querySelector('#recList').innerHTML = data.slice().reverse().map(x =>
+        page.querySelector('#recList-' + uid).innerHTML = data.slice().reverse().map(x =>
           '<div class="tl-item"><span class="sev-dot mid"></span><div class="tl-main"><strong>' + esc(nameOf(x.student_id)) + '</strong> · ' +
           cfg.fields.map(f => esc(x[f.k])).filter(Boolean).join(' · ') + '</div><div class="tl-meta">' + esc(x[cfg.dateField || 'date'] || x.date || x.event_date || '') + '</div>' +
           '<button class="mini danger" data-del="' + x.id + '"><i class="bi bi-trash"></i></button></div>').join('');
-        page.querySelector('#recEmpty').hidden = data.length > 0;
+        page.querySelector('#recEmpty-' + uid).hidden = data.length > 0;
         page.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
           const ok = await window.UI.confirm('למחוק?'); if (!ok) return;
           await del(cfg.table, Number(b.dataset.del)); data = data.filter(x => x.id != b.dataset.del); draw(); window.UI.toast('נמחק');
         }));
       }
-      page.querySelector('#recCsv').addEventListener('click', () => {
+      page.querySelector('#recCsv-' + uid).addEventListener('click', () => {
         const head = ['תלמיד'].concat(cfg.fields.map(f => f.label)).concat(['תאריך']);
         const lines = [head.join(',')].concat(data.map(x =>
           [nameOf(x.student_id)].concat(cfg.fields.map(f => x[f.k])).concat([x[cfg.dateField || 'date'] || x.date || x.event_date || ''])
@@ -57,7 +61,7 @@
         const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = cfg.table + '.csv'; a.click();
       });
-      page.querySelector('#recSave').addEventListener('click', async () => {
+      page.querySelector('#recSave-' + uid).addEventListener('click', async () => {
         const sid = pick.value();
         if (!sid) { window.UI.toast('בחר תלמיד', 'err'); return; }
         const row = { student_id: Number(sid) };
