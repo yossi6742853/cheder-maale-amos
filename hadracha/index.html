@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>הדרכה — מערכת מעקב תלמידים</title>
+<link href="../vendor/heebo.css" rel="stylesheet">
+<link rel="stylesheet" href="../vendor/bootstrap-icons.css">
+<style>
+  :root{--primary:#164e63;--primary-dark:#0e3546;--accent:#c98a1a;--line:#e4e9ef;--muted:#5f6f7e}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Heebo',sans-serif;background:#f3f6f9;color:#1c2733;line-height:1.6}
+  header{background:linear-gradient(135deg,var(--primary-dark),var(--primary));color:#eaf3f7;padding:26px 20px;text-align:center}
+  header h1{font-size:1.5rem;font-weight:800}
+  header p{color:#cfe2ea;font-size:.95rem;margin-top:4px}
+  main{max-width:940px;margin:0 auto;padding:24px 16px 50px}
+  .vid{background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px;
+       margin-bottom:22px;box-shadow:0 1px 2px rgba(16,40,56,.06),0 6px 20px rgba(16,40,56,.07)}
+  .vid h2{font-size:1.2rem;color:var(--primary-dark);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .badge{background:var(--accent);color:#fff;font-size:.75rem;font-weight:700;padding:3px 11px;border-radius:999px}
+  .who{color:var(--muted);font-size:.9rem;margin:6px 0 14px}
+  video{width:100%;border-radius:12px;background:#000;display:block}
+  ul{margin:12px 22px 0;color:var(--muted);font-size:.92rem}
+  a.back{display:inline-flex;align-items:center;gap:6px;color:var(--primary);font-weight:700;
+         text-decoration:none;margin-bottom:16px}
+</style>
+</head>
+<body>
+<header>
+  <h1>הדרכה — מערכת מעקב תלמידים</h1>
+  <p>תלמוד תורה מעלה עמוס</p>
+</header>
+<main>
+  <a class="back" href="../"><i class="bi bi-arrow-right"></i> חזרה למערכת</a>
+
+  <section class="vid">
+    <h2><i class="bi bi-play-circle"></i> איך נכנסים ואיך מדווחים <span class="badge">דקה אחת</span></h2>
+    <p class="who">לכל המלמדים והמחנכים — הדבר היחיד שחייבים לדעת כדי להתחיל.</p>
+    <video controls preload="metadata" playsinline src="hadracha-katzar.mp4"></video>
+    <ul>
+      <li>כניסה למערכת והחלפת סיסמה</li>
+      <li>רישום דיווח על תלמיד, מההתחלה ועד האישור</li>
+    </ul>
+  </section>
+
+  <section class="vid">
+    <h2><i class="bi bi-collection-play"></i> סקירה מלאה של המערכת <span class="badge">שתי דקות וחצי</span></h2>
+    <p class="who">להנהלה — כל המסכים והיכולות.</p>
+    <video controls preload="metadata" playsinline src="hadracha-maleh.mp4"></video>
+    <ul>
+      <li>כניסה, סיסמאות והרשאות · רישום מהיר · נוכחות · מבחנים</li>
+      <li>מעקב מלא, סינון וקיבוץ, ייצוא לאקסל</li>
+      <li>כרטיס התלמיד · דשבורד · לוח שנה · טפסים וחתימות</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
