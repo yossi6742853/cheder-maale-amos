@@ -360,3 +360,11 @@ button.chip{border:none; cursor:pointer; font-family:inherit}
 .tile-feature::after{ content:'★'; position:absolute; top:8px; left:10px; color:var(--tc); font-size:.8rem; opacity:.7 }
 /* כותרות קבוצה בקיבוץ */
 .group-sec .group-title{ border-bottom:1px solid var(--line); padding-bottom:3px }
+
+/* ===== כפתור עזרה צף + עזרה מסך ===== */
+.help-fab{position:fixed; inset-inline-end:20px; bottom:20px; z-index:40; width:52px; height:52px;
+  border-radius:50%; border:none; cursor:pointer; background:var(--primary); color:#fff; font-size:1.5rem;
+  box-shadow:0 6px 20px color-mix(in srgb,var(--primary) 40%,transparent); display:grid; place-items:center;
+  transition:transform .15s, background .15s}
+.help-fab:hover{transform:scale(1.08); background:var(--primary-dark)}
+@media (max-width:520px){ .help-fab{width:46px; height:46px; font-size:1.3rem; inset-inline-end:14px; bottom:14px} }

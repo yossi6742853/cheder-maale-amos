@@ -104,8 +104,10 @@
       box.innerHTML = '<span class="ui-name"><i class="bi bi-person-circle"></i> ' +
         (A.currentUser.name || '') + ' · ' + (A.currentUser.role || '') + '</span>' +
         '<button class="icon-btn" id="pwBtn" title="שינוי סיסמה" aria-label="שינוי סיסמה"><i class="bi bi-key"></i></button>' +
+        '<button class="icon-btn" id="helpBtn" title="עזרה והדרכה" aria-label="עזרה"><i class="bi bi-question-lg"></i></button>' +
         '<button class="icon-btn" id="logoutBtn" title="יציאה" aria-label="יציאה"><i class="bi bi-box-arrow-right"></i></button>';
       const pb = $('#pwBtn'); if (pb) pb.addEventListener('click', changeOwnPassword);
+      const hb = $('#helpBtn'); if (hb) hb.addEventListener('click', () => { if (window.cv3Help) { const a = document.querySelector('.page.active'); const id = a ? (a.id || '').replace('page-', '') : ''; window.cv3Help(id && id !== 'home' ? id : null); } });
       const lb = $('#logoutBtn'); if (lb) lb.addEventListener('click', logout);
       box.hidden = false;
     } else { box.innerHTML = ''; box.hidden = true; }
