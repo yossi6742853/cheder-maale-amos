@@ -368,3 +368,8 @@ button.chip{border:none; cursor:pointer; font-family:inherit}
   transition:transform .15s, background .15s}
 .help-fab:hover{transform:scale(1.08); background:var(--primary-dark)}
 @media (max-width:520px){ .help-fab{width:46px; height:46px; font-size:1.3rem; inset-inline-end:14px; bottom:14px} }
+
+/* ===== מצב טעינה ניטרלי למסך (מחליף את כרטיס השלד הישן) ===== */
+.page-loading{display:grid; place-items:center; gap:10px; padding:60px 20px; color:var(--muted)}
+.page-loading .spin{font-size:2rem; color:var(--primary-light); display:inline-block; animation:cv3spin 1s linear infinite}
+@keyframes cv3spin{to{transform:rotate(360deg)}}

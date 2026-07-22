@@ -63,16 +63,13 @@
   function buildPages() {
     const host = $('#pages');
     MODULES.forEach(m => {
+      // מצב טעינה ניטרלי בלבד. בעבר היה כאן כרטיס "השלד מוכן — ייבנה בחלק",
+      // וכשהרנדרר האסינכרוני של המסך טען את הנתונים הוא דרס אותו — כך שבכניסה
+      // ראשונה הבזיק לרגע טקסט "מוכן/ייבנה". עכשיו רואים רק סיבוב טעינה קצר.
       const page = el('section', { class: 'page', id: 'page-' + m.id },
-        el('div', { class: 'page-head' },
-          el('button', { class: 'back', onclick: () => showPage('home') }, '→ חזרה לתפריט'),
-          el('h2', {}, m.label)
-        ),
-        el('div', { class: 'soon-card' },
-          el('span', { class: 'ic', html: '<i class="bi ' + m.icon + '"></i>' }),
-          el('div', { html: 'מסך <b>' + m.label + '</b> — השלד מוכן.' }),
-          el('div', {}, 'המסך המלא (טפסים, נתונים, פעולות) ייבנה בשלב הבנייה שלו.'),
-          el('span', { class: 'part' }, 'ייבנה בחלק ' + m.part)
+        el('div', { class: 'page-loading' },
+          el('span', { class: 'spin', html: '<i class="bi bi-arrow-repeat"></i>' }),
+          el('div', {}, 'טוען…')
         )
       );
       host.appendChild(page);
@@ -143,6 +140,9 @@
     target.classList.add('active');
     if (target.id === 'page-home') updateHomeMode();
     if (window.PAGE_RENDERERS && window.PAGE_RENDERERS[id]) {
+      // מציגים מצב טעינה ניטרלי לפני שהרנדרר האסינכרוני מסיים, כך שלא מבליח
+      // תוכן ישן ולא כרטיס שלד. הרנדרר דורס את זה כשהנתונים מוכנים.
+      target.innerHTML = '<div class="page-loading"><span class="spin"><i class="bi bi-arrow-repeat"></i></span><div>טוען…</div></div>';
       try { window.PAGE_RENDERERS[id](target); } catch (e) { console.warn('renderer error', id, e); }
     }
     if (id && id !== 'home') { try { history.replaceState({}, '', '#' + id); } catch (_) {} }
