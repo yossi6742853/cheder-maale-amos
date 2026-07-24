@@ -135,6 +135,7 @@
   // מחולל דף-לוג פשוט לקריאה/כתיבה (רמה + תאריך + הערה לתלמיד)
   function makeLog(table, title, icon) {
     return async function (page) {
+      const uid = table;   // סיומת ייחודית ל-id-ים (מונע כפילות DOM בין קריאה/כתיבה)
       const studs = await students();
       const nameOf = id => { const s = studs.find(x => x.id == id); return s ? s.name : '—'; };
       const pickHtml = await window.cv3Picker.html('l');
