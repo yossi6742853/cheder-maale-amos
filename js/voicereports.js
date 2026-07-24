@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const DEFAULT_FOLDER = 'ivr2:/1/messages';
+  const DEFAULT_FOLDER = 'ivr2:/4';   // שלוחת "דיווח מורים" הייעודית
   const GEMINI = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
   let students = [];
@@ -45,7 +45,8 @@
     try {
       const d = await window.Yemot.call('GetIVR2Dir', { path: folder });
       if (d.responseStatus !== 'OK') { box.innerHTML = '<div class="empty-state" style="padding:14px">' + esc(d.message || 'לא ניתן לטעון') + '</div>'; return; }
-      const wavs = (d.files || []).filter(f => (f.name || '').match(/\.(wav|mp3)$/i));
+      // הקלטות אמיתיות בלבד — מדלגים על הודעת הפתיחה (000) וקבצי מערכת
+      const wavs = (d.files || []).filter(f => (f.name || '').match(/\.(wav|mp3)$/i) && !/^000\./.test(f.name || ''));
       if (!wavs.length) { box.innerHTML = '<div class="empty-state" style="padding:14px">אין הקלטות חדשות בתיקייה זו.</div>'; return; }
       box.innerHTML = wavs.map(f => {
         const full = folder.replace(/\/$/, '') + '/' + f.name;
