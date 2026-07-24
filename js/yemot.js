@@ -180,7 +180,7 @@
           '<div id="ymKeyRow" hidden style="margin-top:8px">' +
             '<label class="lbl" style="margin-bottom:4px">מפתח Gemini (נשמר במכשיר זה בלבד, פעם אחת)</label>' +
             '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
-              '<input class="inp mb0" id="ymGKey" type="password" placeholder="AIza…" style="flex:1;min-width:180px">' +
+              '<input class="inp mb0" id="ymGKey" type="text" dir="ltr" autocomplete="off" spellcheck="false" placeholder="AIza…" style="flex:1;min-width:180px;direction:ltr;text-align:left">' +
               '<button class="btn-ghost sm" id="ymGKeySave"><i class="bi bi-key"></i> שמור מפתח</button></div>' +
             '<p class="login-hint" style="margin-top:4px">המפתח נשמר מקומית בדפדפן שלך בלבד ואינו נשלח לאף שרת חוץ מ-Google.</p></div>' +
           '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center">' +
@@ -236,10 +236,12 @@
     const showKeyRow = () => { keyRow.hidden = !!gKey(); };
     showKeyRow();
     page.querySelector('#ymGKeySave').addEventListener('click', () => {
-      const k = page.querySelector('#ymGKey').value.trim();
+      // ניקוי רעשי-הדבקה: רווחים, מרכאות, תווים נסתרים
+      const k = page.querySelector('#ymGKey').value.replace(/[\s"'`​-‏]/g, '');
       const msg = page.querySelector('#ymTtsMsg');
-      if (!/^AIza[\w\-]{10,}$/.test(k)) { msg.textContent = 'מפתח לא תקין (מתחיל ב-AIza).'; return; }
-      setGKey(k); keyRow.hidden = true; msg.textContent = '✓ המפתח נשמר. אפשר ליצור קול.';
+      if (k.length < 20) { msg.textContent = 'המפתח קצר מדי — ודאו שהודבק במלואו.'; return; }
+      setGKey(k); keyRow.hidden = true;
+      msg.textContent = '✓ המפתח נשמר. לחצו "צור קול" כדי לבדוק.';
     });
     page.querySelector('#ymTtsGen').addEventListener('click', async () => {
       const text = page.querySelector('#ymText').value.trim();
