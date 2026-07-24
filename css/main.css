@@ -394,3 +394,12 @@ button.chip{border:none; cursor:pointer; font-family:inherit}
 .ym-note{color:var(--muted);font-weight:400;font-size:.9rem}
 .ym-badge{font-size:.76rem;background:var(--accent-soft);color:var(--accent);padding:3px 10px;border-radius:999px;font-weight:700;white-space:nowrap}
 .ym-arrow{color:var(--muted);opacity:.5}
+
+/* ===== פאנל ימות — טאבים, הקלטה, צ'קבוקס ===== */
+.ym-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.ym-tab{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 14px;cursor:pointer;font-family:inherit;font-size:.9rem;font-weight:600;color:var(--muted);display:inline-flex;align-items:center;gap:6px;transition:all .12s}
+.ym-tab:hover{border-color:var(--primary-light)}
+.ym-tab.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+.ym-pane{margin-top:4px}
+.ym-check{display:inline-flex;align-items:center;gap:7px;font-size:.9rem;color:var(--ink);cursor:pointer;background:var(--accent-soft);padding:7px 12px;border-radius:9px}
+.ym-check input{width:16px;height:16px;cursor:pointer}
