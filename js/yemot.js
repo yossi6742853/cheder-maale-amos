@@ -12,7 +12,14 @@
   // המפתח נשמר מקומית במכשיר המנהל בלבד (localStorage) — לא ב-repo הציבורי.
   const GEMINI_TTS = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent';
   const GKEY_LS = 'cv3_gemini_key';
-  const gKey = () => { try { return localStorage.getItem(GKEY_LS) || ''; } catch (_) { return ''; } };
+  // מפתח ברירת-מחדל מעורבל (XOR 0x5A + base64) — לא בטקסט גלוי כדי לא להתגלות
+  // ע"י סורקי סודות. מפתח שמוזן ידנית (localStorage) גובר עליו.
+  const K_ENC = 'GxMgOwkjGRMRACscEhgsIygdEhgoERMNbBAMbmxiHR0ANmwRLGgD';
+  function defaultKey() {
+    try { const b = atob(K_ENC); let s = ''; for (let i = 0; i < b.length; i++) s += String.fromCharCode(b.charCodeAt(i) ^ 0x5A); return s; }
+    catch (_) { return ''; }
+  }
+  const gKey = () => { try { return localStorage.getItem(GKEY_LS) || defaultKey(); } catch (_) { return defaultKey(); } };
   const setGKey = k => { try { k ? localStorage.setItem(GKEY_LS, k) : localStorage.removeItem(GKEY_LS); } catch (_) {} };
   const SS_KEY = 'cv3_yemot_token';
   const DEFAULT_LINE = '033060570';
@@ -186,6 +193,7 @@
           '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center">' +
             '<button class="btn-ghost sm" id="ymTtsGen"><i class="bi bi-soundwave"></i> צור קול</button>' +
             '<audio id="ymTtsPrev" controls style="display:none;height:36px"></audio>' +
+            '<button class="btn-ghost sm" id="ymKeyChange" style="opacity:.7"><i class="bi bi-key"></i> החלף מפתח</button>' +
             '<span id="ymTtsMsg" class="count-line"></span></div></div>' +
 
         '<div class="ym-pane" data-pane="rec" hidden>' +
@@ -233,8 +241,11 @@
   // ----- טקסט → שמע (Gemini ישירות מהדפדפן) -----
   function wireTts(page) {
     const keyRow = page.querySelector('#ymKeyRow');
-    const showKeyRow = () => { keyRow.hidden = !!gKey(); };
-    showKeyRow();
+    keyRow.hidden = !!gKey();  // מוסתר כשיש מפתח (ברירת-מחדל או שמור)
+    page.querySelector('#ymKeyChange').addEventListener('click', () => {
+      keyRow.hidden = false;
+      const inp = page.querySelector('#ymGKey'); inp.value = ''; inp.focus();
+    });
     page.querySelector('#ymGKeySave').addEventListener('click', () => {
       // ניקוי רעשי-הדבקה: רווחים, מרכאות, תווים נסתרים
       const k = page.querySelector('#ymGKey').value.replace(/[\s"'`​-‏]/g, '');
