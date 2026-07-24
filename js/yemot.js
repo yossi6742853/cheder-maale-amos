@@ -1,29 +1,28 @@
 // yemot.js — פאנל ניהול קו ימות המשיח של המוסד (מנהל בלבד).
-// מאפשר: התחברות לקו, העלאת הקלטה לשלוחה, צפייה בנרשמים לצינתוק, והפעלת צינתוק.
+// גרסה משודרגת: דפדפן שלוחות חכם (מזהה סוג כל שלוחה), מצב קו, העלאת הקלטה,
+// רשימת נרשמים לצינתוק והפעלתו — הכל מתוך ממשק אחד נוח.
 //
-// CORS: נבדק בפועל — API של ימות (call2all.co.il/ym/api) מאפשר קריאות דפדפן
-// ישירות, ולכן אין צורך בפרוקסי. ה-token נשמר ב-sessionStorage בלבד (לא הסיסמה,
-// ולא נשמר בין דפדפנים), ופג אוטומטית אחרי ~45 דקות אצל ימות.
+// CORS: נבדק בפועל — API של ימות מאפשר קריאות דפדפן ישירות. אין צורך בפרוקסי.
+// ה-token נשמר ב-sessionStorage בלבד (לא הסיסמה), ופג אצל ימות אחרי ~45 דקות.
 (function () {
   'use strict';
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const API = 'https://www.call2all.co.il/ym/api';
   const SS_KEY = 'cv3_yemot_token';
-  const DEFAULT_LINE = '033060570';   // קו המוסד (סופק ע"י יוסף 21/07)
+  const DEFAULT_LINE = '033060570';
 
   const token = () => { try { return sessionStorage.getItem(SS_KEY) || ''; } catch (_) { return ''; } };
   const setToken = t => { try { t ? sessionStorage.setItem(SS_KEY, t) : sessionStorage.removeItem(SS_KEY); } catch (_) {} };
 
-  // קריאת GET ל-API. ימות מחזיר JSON עם responseStatus.
   async function call(method, params) {
     const qs = new URLSearchParams(Object.assign({ token: token() }, params || {}));
     const res = await fetch(`${API}/${method}?${qs}`, { method: 'GET' });
-    let data; try { data = await res.json(); } catch (_) { data = { responseStatus: 'EXCEPTION', message: 'תשובה לא תקינה מהשרת' }; }
+    let data; try { data = await res.json(); } catch (_) { data = { responseStatus: 'EXCEPTION', message: 'תשובה לא תקינה' }; }
+    if (data && /token/i.test(data.message || '') && data.responseStatus !== 'OK') { setToken(''); }
     return data;
   }
 
   async function login(line, pass) {
-    // Login מחזיר token ב-JSON; אין צורך ב-token קודם
     const qs = new URLSearchParams({ username: line, password: pass });
     const res = await fetch(`${API}/Login?${qs}`, { method: 'GET' });
     const data = await res.json();
@@ -31,7 +30,21 @@
     return { ok: false, msg: data.message || 'שם משתמש או סיסמה שגויים' };
   }
 
+  // סוגי שלוחות → תווית ואייקון ידידותיים
+  const EXT_TYPES = {
+    go_to_folder: { icon: 'bi-signpost-split', label: 'ניתוב' },
+    record: { icon: 'bi-mic', label: 'הקלטה' },
+    tzintuk: { icon: 'bi-bell', label: 'צינתוק' },
+    playfile: { icon: 'bi-play-circle', label: 'השמעת קובץ' },
+    menu: { icon: 'bi-list', label: 'תפריט' },
+    last_play: { icon: 'bi-star', label: 'הודעה אחרונה' },
+    conference: { icon: 'bi-people', label: 'ועידה' },
+  };
+  const typeInfo = t => EXT_TYPES[t] || { icon: 'bi-folder2', label: t || 'שלוחה' };
+
   // ---------- תצוגה ----------
+  const state = { path: 'ivr2:/' };
+
   async function render(page) {
     if (!token()) return renderLogin(page);
     return renderPanel(page);
@@ -59,8 +72,8 @@
       msg.textContent = 'מתחבר…'; btn.disabled = true;
       try {
         const r = await login(line, pass);
-        if (r.ok) { render(page); } else { msg.textContent = r.msg; btn.disabled = false; }
-      } catch (e) { msg.textContent = 'שגיאת רשת — בדוק חיבור לאינטרנט.'; btn.disabled = false; }
+        if (r.ok) { state.path = 'ivr2:/'; render(page); } else { msg.textContent = r.msg; btn.disabled = false; }
+      } catch (e) { msg.textContent = 'שגיאת רשת — בדוק חיבור.'; btn.disabled = false; }
     };
     btn.addEventListener('click', go);
     page.querySelector('#ymPass').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
@@ -69,36 +82,110 @@
   function renderPanel(page) {
     page.innerHTML =
       '<div class="page-head"><button class="back" onclick="showPage(\'home\')">→ חזרה לתפריט</button><h2>קו ימות המשיח</h2>' +
-        '<div class="head-actions"><span class="chip ok" style="margin-inline-end:8px"><i class="bi bi-check-circle"></i> מחובר</span>' +
+        '<div class="head-actions"><span class="chip ok" id="ymConn" style="margin-inline-end:8px"><i class="bi bi-check-circle"></i> מחובר</span>' +
         '<button class="btn-ghost sm" id="ymLogout"><i class="bi bi-box-arrow-right"></i> ניתוק</button></div></div>' +
+
+      // מצב הקו
+      '<div class="qr-card" id="ymStateCard"><h3><i class="bi bi-telephone-fill"></i> מצב הקו</h3>' +
+        '<div id="ymState" class="ym-stats">טוען…</div></div>' +
+
+      // דפדפן שלוחות
+      '<div class="qr-card"><div class="card-h-row"><h3><i class="bi bi-diagram-3"></i> שלוחות הקו</h3>' +
+        '<button class="btn-ghost sm" id="ymRefresh"><i class="bi bi-arrow-clockwise"></i> רענון</button></div>' +
+        '<div id="ymCrumb" class="ym-crumb"></div>' +
+        '<div id="ymDir" class="ym-dir"><div class="empty-state" style="padding:14px">טוען…</div></div></div>' +
 
       // העלאת הקלטה
       '<div class="qr-card"><h3><i class="bi bi-cloud-upload"></i> העלאת הקלטה לשלוחה</h3>' +
-        '<p class="login-hint" style="margin:0 0 10px">בוחרים קובץ אודיו (wav/mp3) ומספר שלוחה. הקובץ יוחלף בשלוחה שנבחרה.</p>' +
+        '<p class="login-hint" style="margin:0 0 10px">בחרו קובץ אודיו ומספר שלוחה — הקובץ יוחלף כהודעה בשלוחה שנבחרה.</p>' +
         '<div class="qr-grid" style="grid-template-columns:auto 1fr auto">' +
           '<input class="inp mb0" id="ymExt" value="1" style="width:90px" title="מספר שלוחה" inputmode="numeric">' +
           '<input class="inp mb0" id="ymFile" type="file" accept="audio/*">' +
           '<button class="btn-primary sm" id="ymUpload"><i class="bi bi-upload"></i> העלה</button>' +
-        '</div><div id="ymUpMsg" class="count-line" style="margin-top:8px;min-height:1.2em"></div></div>' +
-
-      // צינתוק
-      '<div class="qr-card"><h3><i class="bi bi-bell"></i> צינתוק לנרשמים</h3>' +
-        '<p class="login-hint" style="margin:0 0 10px">רשימת הנרשמים לצינתוק החינמי. <b>הרשמה מתבצעת רק ע"י מי שמתקשר ומוסיף את עצמו</b> — לא ניתן להוסיף מספרים ידנית לצינתוק חינמי.</p>' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
-          '<input class="inp mb0" id="ymTzExt" placeholder="שלוחת צינתוק" style="width:150px" inputmode="numeric">' +
-          '<button class="btn-ghost sm" id="ymTzLoad"><i class="bi bi-arrow-clockwise"></i> טען נרשמים</button>' +
-          '<button class="btn-primary sm" id="ymTzRun"><i class="bi bi-send"></i> הפעל צינתוק</button>' +
-        '</div>' +
-        '<div id="ymTzList"><div class="empty-state" style="padding:14px">בחר שלוחת צינתוק וטען את רשימת הנרשמים.</div></div>' +
-        '<div id="ymTzMsg" class="count-line" style="margin-top:8px;min-height:1.2em"></div></div>' +
-
-      // מצב הקו
-      '<div class="qr-card"><h3><i class="bi bi-info-circle"></i> מצב הקו</h3><div id="ymState" class="about-list">טוען…</div></div>';
+        '</div><div id="ymUpMsg" class="count-line" style="margin-top:8px;min-height:1.2em"></div></div>';
 
     page.querySelector('#ymLogout').addEventListener('click', () => { setToken(''); render(page); });
+    page.querySelector('#ymRefresh').addEventListener('click', () => loadDir(page, state.path));
     wireUpload(page);
-    wireTzintuk(page);
     loadState(page);
+    loadDir(page, state.path);
+  }
+
+  async function loadState(page) {
+    const box = page.querySelector('#ymState');
+    try {
+      const s = await call('GetSession');
+      if (s.responseStatus === 'OK') {
+        const items = [
+          ['bi-telephone', 'מספר הקו', s.username || s.ownerId || '—'],
+          (s.creditRemains != null ? ['bi-coin', 'יתרת יחידות', s.creditRemains] : null),
+          ['bi-shield-check', 'אבטחה', 'אסימון לסשן זה בלבד'],
+        ].filter(Boolean);
+        box.innerHTML = items.map(([ic, k, v]) =>
+          '<div class="ym-stat"><i class="bi ' + ic + '"></i><div><span class="ym-k">' + esc(k) + '</span><b>' + esc(v) + '</b></div></div>').join('');
+      } else if (!token()) { render(page); }
+      else box.innerHTML = '<div class="empty-state" style="padding:12px">' + esc(s.message || 'לא ניתן לטעון מצב') + '</div>';
+    } catch (e) { box.innerHTML = '<div class="empty-state" style="padding:12px">שגיאה בטעינת מצב הקו.</div>'; }
+  }
+
+  async function loadDir(page, path) {
+    state.path = path;
+    const box = page.querySelector('#ymDir');
+    const crumb = page.querySelector('#ymCrumb');
+    box.innerHTML = '<div class="empty-state" style="padding:14px">טוען…</div>';
+    // פירורי לחם
+    const rel = path.replace('ivr2:/', '').replace(/^ivr2:/, '');
+    const parts = rel.split('/').filter(Boolean);
+    let acc = 'ivr2:/';
+    let cr = '<a class="ym-bc" data-p="ivr2:/"><i class="bi bi-house"></i> ראשי</a>';
+    parts.forEach(seg => { acc += seg + '/'; cr += ' <span class="ym-sep">›</span> <a class="ym-bc" data-p="' + esc(acc) + '">' + esc(seg) + '</a>'; });
+    crumb.innerHTML = cr;
+    crumb.querySelectorAll('.ym-bc').forEach(a => a.addEventListener('click', () => loadDir(page, a.dataset.p)));
+
+    try {
+      const d = await call('GetIVR2Dir', { path });
+      if (d.responseStatus !== 'OK') { box.innerHTML = '<div class="empty-state" style="padding:14px">' + esc(d.message || 'לא ניתן לטעון') + '</div>'; return; }
+      const SYS = ['Log', 'Messages', 'EnterIDRecord', 'Star', 'Trash', 'ConfBridge'];
+      const dirs = (d.dirs || []).filter(x => x.name && !SYS.includes(x.name));
+      const wavs = (d.files || []).filter(f => (f.name || '').endsWith('.wav'));
+      let html = '';
+      if (!dirs.length && !wavs.length) html = '<div class="empty-state" style="padding:14px">השלוחה ריקה.</div>';
+      // שלוחות
+      dirs.forEach(dir => {
+        const isExt = dir.fileType === 'EXT';
+        const ti = typeInfo(dir.extType);
+        const title = dir.extTitle || (isExt ? ti.label : '');
+        const badge = isExt ? '<span class="ym-badge"><i class="bi ' + ti.icon + '"></i> ' + esc(ti.label) + '</span>' : '';
+        html += '<div class="ym-row" data-nav="' + esc('ivr2:/' + (rel ? rel + '/' : '') + dir.name) + '">' +
+          '<span class="ym-ic"><i class="bi ' + (isExt ? ti.icon : 'bi-folder2') + '"></i></span>' +
+          '<div class="ym-main"><b>שלוחה ' + esc(dir.name) + '</b>' + (title !== ('שלוחה ' + dir.name) ? ' <span class="ym-note">' + esc(title) + '</span>' : '') + '</div>' +
+          badge + '<i class="bi bi-chevron-left ym-arrow"></i></div>';
+      });
+      // הקלטות (קבצי wav)
+      wavs.forEach(f => {
+        html += '<div class="ym-row ym-file"><span class="ym-ic"><i class="bi bi-music-note-beamed"></i></span>' +
+          '<div class="ym-main"><b>' + esc(f.name) + '</b></div>' +
+          '<button class="mini" data-play="' + esc(f.name) + '" title="השמעה"><i class="bi bi-play-fill"></i></button></div>';
+      });
+      box.innerHTML = html;
+      box.querySelectorAll('[data-nav]').forEach(r => r.addEventListener('click', () => loadDir(page, r.dataset.nav)));
+      box.querySelectorAll('[data-play]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); playFile(page, path, b.dataset.play); }));
+    } catch (e) { box.innerHTML = '<div class="empty-state" style="padding:14px">שגיאת רשת.</div>'; }
+  }
+
+  // השמעת הקלטה — הורדה ל-blob והשמעה בדפדפן
+  async function playFile(page, path, name) {
+    const full = (path.endsWith('/') ? path : path + '/') + name;
+    const url = `${API}/DownloadFile?token=${encodeURIComponent(token())}&path=${encodeURIComponent(full)}`;
+    try {
+      const existing = document.getElementById('ymAudio');
+      if (existing) existing.remove();
+      const audio = document.createElement('audio');
+      audio.id = 'ymAudio'; audio.controls = true; audio.autoplay = true; audio.style.cssText = 'width:100%;margin-top:10px';
+      audio.src = url;
+      page.querySelector('#ymDir').appendChild(audio);
+      audio.play().catch(() => {});
+    } catch (e) { window.UI.toast('לא ניתן להשמיע את הקובץ', 'err'); }
   }
 
   function wireUpload(page) {
@@ -117,60 +204,13 @@
         fd.append('file', f, f.name);
         const res = await fetch(`${API}/UploadFile`, { method: 'POST', body: fd });
         const data = await res.json();
-        if (data.responseStatus === 'OK') { msg.textContent = '✓ ההקלטה הועלתה לשלוחה ' + esc(ext); page.querySelector('#ymFile').value = ''; }
-        else { msg.textContent = 'שגיאה: ' + esc(data.message || 'ההעלאה נכשלה'); }
+        if (data.responseStatus === 'OK') {
+          msg.textContent = '✓ ההקלטה הועלתה לשלוחה ' + esc(ext);
+          page.querySelector('#ymFile').value = '';
+          if (state.path === 'ivr2:/' + ext + '/' || state.path === 'ivr2:/' + ext) loadDir(page, state.path);
+        } else { msg.textContent = 'שגיאה: ' + esc(data.message || 'ההעלאה נכשלה'); }
       } catch (e) { msg.textContent = 'שגיאת רשת בהעלאה.'; }
     });
-  }
-
-  function wireTzintuk(page) {
-    const listBox = page.querySelector('#ymTzList');
-    const msg = page.querySelector('#ymTzMsg');
-
-    page.querySelector('#ymTzLoad').addEventListener('click', async () => {
-      const ext = page.querySelector('#ymTzExt').value.trim();
-      if (!ext) { msg.textContent = 'הזן מספר שלוחת צינתוק.'; return; }
-      listBox.innerHTML = '<div class="empty-state" style="padding:14px">טוען…</div>';
-      try {
-        // הנרשמים נשמרים בקובץ tzintuk של השלוחה
-        const data = await call('GetTextFile', { what: 'ivr2:/' + ext + '/tzintuk.ini' });
-        const raw = (data && data.contents) || '';
-        const nums = raw.split(/[\r\n,]+/).map(s => s.trim()).filter(s => /^0\d{6,}/.test(s));
-        if (!nums.length) { listBox.innerHTML = '<div class="empty-state" style="padding:14px">אין נרשמים בשלוחה זו (או שהשלוחה אינה שלוחת צינתוק).</div>'; msg.textContent = ''; return; }
-        listBox.innerHTML =
-          '<div class="count-line" style="margin-bottom:6px">' + nums.length + ' נרשמים</div>' +
-          nums.map(n => '<div class="tl-item"><span class="sev-dot lo"></span><div class="tl-main" style="direction:ltr;text-align:right">' + esc(n) + '</div></div>').join('');
-        msg.textContent = '';
-      } catch (e) { listBox.innerHTML = '<div class="empty-state" style="padding:14px">שגיאה בטעינת הרשימה.</div>'; }
-    });
-
-    page.querySelector('#ymTzRun').addEventListener('click', async () => {
-      const ext = page.querySelector('#ymTzExt').value.trim();
-      if (!ext) { msg.textContent = 'הזן מספר שלוחת צינתוק.'; return; }
-      if (!(await window.UI.confirm('להפעיל צינתוק לכל הנרשמים בשלוחה ' + esc(ext) + '? צינתוק שהמנהל יוזם עלול לצרוך יחידות (אלא אם השלוחה מוגדרת כצינתוק חינמי אוטומטי).'))) return;
-      msg.textContent = 'מפעיל…';
-      try {
-        const data = await call('RunTzintuk', { path: 'ivr2:/' + ext });
-        if (data.responseStatus === 'OK') { msg.textContent = '✓ הצינתוק הופעל.'; }
-        else { msg.textContent = 'הצינתוק לא הופעל: ' + esc(data.message || '') + (/balance/i.test(data.message || '') ? ' — נראה שאין יתרת יחידות; צינתוק חינמי עובד רק דרך הרשמה עצמית של המשתמש.' : ''); }
-      } catch (e) { msg.textContent = 'שגיאת רשת.'; }
-    });
-  }
-
-  async function loadState(page) {
-    const box = page.querySelector('#ymState');
-    try {
-      const s = await call('GetSession');
-      if (s.responseStatus === 'OK') {
-        box.innerHTML =
-          '<li>מספר הקו: <b>' + esc(s.ownerId || s.username || '—') + '</b></li>' +
-          (s.creditRemains != null ? '<li>יתרת יחידות: <b>' + esc(s.creditRemains) + '</b></li>' : '') +
-          '<li>אסימון פעיל לסשן זה בלבד</li>';
-      } else if (/token/i.test(s.message || '')) {
-        box.innerHTML = '<li>האסימון פג. יש להתחבר מחדש.</li>';
-        setToken('');
-      } else { box.innerHTML = '<li>' + esc(s.message || 'לא ניתן לטעון מצב') + '</li>'; }
-    } catch (e) { box.innerHTML = '<li>שגיאה בטעינת מצב הקו.</li>'; }
   }
 
   window.PAGE_RENDERERS = window.PAGE_RENDERERS || {};

@@ -373,3 +373,24 @@ button.chip{border:none; cursor:pointer; font-family:inherit}
 .page-loading{display:grid; place-items:center; gap:10px; padding:60px 20px; color:var(--muted)}
 .page-loading .spin{font-size:2rem; color:var(--primary-light); display:inline-block; animation:cv3spin 1s linear infinite}
 @keyframes cv3spin{to{transform:rotate(360deg)}}
+
+/* ===== פאנל ימות — דפדפן שלוחות ומצב קו ===== */
+.ym-stats{display:flex;flex-wrap:wrap;gap:14px}
+.ym-stat{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 16px;flex:1;min-width:170px}
+.ym-stat i{font-size:1.4rem;color:var(--primary)}
+.ym-stat .ym-k{display:block;font-size:.78rem;color:var(--muted)}
+.ym-stat b{font-size:1.02rem;color:var(--ink)}
+.ym-crumb{display:flex;align-items:center;flex-wrap:wrap;gap:2px;font-size:.9rem;margin-bottom:10px;color:var(--muted)}
+.ym-crumb .ym-bc{color:var(--primary);cursor:pointer;font-weight:700;padding:2px 4px;border-radius:6px}
+.ym-crumb .ym-bc:hover{background:color-mix(in srgb,var(--primary) 12%,transparent)}
+.ym-sep{opacity:.5}
+.ym-dir{display:flex;flex-direction:column;gap:8px}
+.ym-row{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 15px;cursor:pointer;transition:border-color .12s,transform .1s}
+.ym-row[data-nav]:hover{border-color:var(--primary-light);transform:translateX(-3px)}
+.ym-row.ym-file{cursor:default}
+.ym-ic{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary);font-size:1.15rem;flex:none}
+.ym-row .ym-main{flex:1}
+.ym-row .ym-main b{font-weight:700}
+.ym-note{color:var(--muted);font-weight:400;font-size:.9rem}
+.ym-badge{font-size:.76rem;background:var(--accent-soft);color:var(--accent);padding:3px 10px;border-radius:999px;font-weight:700;white-space:nowrap}
+.ym-arrow{color:var(--muted);opacity:.5}
