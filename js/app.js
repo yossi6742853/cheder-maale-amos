@@ -201,6 +201,15 @@
     wireDark();
     setStatus();
     if (window.Auth) window.Auth.init();   // מציג כניסה או בית לפי מצב האימות
-    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
+    if ('serviceWorker' in navigator) {
+      // רישום + ריפוי-עצמי: בודק עדכון בכל טעינה, ומרענן פעם אחת כשה-SW החדש תופס שליטה
+      let reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (reloaded) return; reloaded = true; location.reload();
+      });
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => { try { reg.update(); } catch (_) {} })
+        .catch(() => {});
+    }
   });
 })();

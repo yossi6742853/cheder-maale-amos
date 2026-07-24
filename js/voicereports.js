@@ -9,6 +9,36 @@
 
   let students = [];
 
+  // אחסון טיוטות: Supabase אם הטבלה קיימת, אחרת נפילה חלקה ל-localStorage
+  // (כדי שהפיצ'ר יעבוד מיד גם לפני הרצת מיגרציית ה-SQL).
+  let useLocal = false;
+  const LS = 'cv3_voice_reports_local';
+  const lsGet = () => { try { return JSON.parse(localStorage.getItem(LS) || '[]'); } catch (_) { return []; } };
+  const lsSet = a => { try { localStorage.setItem(LS, JSON.stringify(a)); } catch (_) {} };
+  const vr = {
+    async probe() {
+      if (window.db.DEMO) { useLocal = true; return; }
+      const r = await window.db.list('voice_reports', {});
+      useLocal = !r.ok;   // הטבלה חסרה → אחסון מקומי
+    },
+    async list() {
+      if (useLocal) return { ok: true, data: lsGet().filter(x => x.status === 'draft').sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')) };
+      return window.db.list('voice_reports', { eq: { status: 'draft' }, order: 'created_at', asc: false });
+    },
+    async insert(row) {
+      if (useLocal) { const a = lsGet(); a.push(Object.assign({ id: 'L' + Date.now() + Math.random().toString(36).slice(2, 6), created_at: new Date().toISOString() }, row)); lsSet(a); return { ok: true }; }
+      return window.db.insert('voice_reports', row);
+    },
+    async update(id, patch) {
+      if (useLocal) { const a = lsGet(); const i = a.findIndex(x => String(x.id) === String(id)); if (i >= 0) { Object.assign(a[i], patch); lsSet(a); } return { ok: true }; }
+      return window.db.update('voice_reports', id, patch);
+    },
+    async remove(id) {
+      if (useLocal) { lsSet(lsGet().filter(x => String(x.id) !== String(id))); return { ok: true }; }
+      return window.db.remove('voice_reports', id);
+    }
+  };
+
   async function render(page) {
     page.innerHTML =
       '<div class="page-head"><button class="back" onclick="showPage(\'home\')">→ חזרה לתפריט</button><h2>דיווחים קוליים ממורים</h2></div>' +
@@ -29,6 +59,7 @@
     page.querySelector('#vrRefreshDrafts').addEventListener('click', () => loadDrafts(page));
     // רשימת תלמידים לקישור
     try { const r = await window.db.list('students', { order: 'name' }); students = r.ok ? r.data : []; } catch (_) { students = []; }
+    await vr.probe();
     loadRecs(page); loadDrafts(page);
   }
 
@@ -90,7 +121,7 @@
       let saved = 0;
       for (const rep of reports) {
         const match = students.find(s => rep.student_name && (s.name || '').trim() === String(rep.student_name).trim());
-        const ins = await window.db.insert('voice_reports', {
+        const ins = await vr.insert({
           audio_path: path, audio_name: path.split('/').pop(),
           teacher_name: out.teacher_name || '', student_id: match ? match.id : null,
           transcript: out.transcript || '', report_text: rep.report_text || '',
@@ -110,11 +141,12 @@
   async function loadDrafts(page) {
     const box = page.querySelector('#vrDrafts');
     box.innerHTML = '<div class="empty-state" style="padding:14px">טוען…</div>';
-    if (window.db.DEMO) { box.innerHTML = '<div class="empty-state" style="padding:14px">מצב הדגמה — אין חיבור למסד.</div>'; return; }
-    const r = await window.db.list('voice_reports', { eq: { status: 'draft' }, order: 'created_at', asc: false });
+    const r = await vr.list();
     if (!r.ok) { box.innerHTML = '<div class="empty-state" style="padding:14px">שגיאה בטעינת טיוטות: ' + esc(r.error || '') + '</div>'; return; }
-    if (!r.data.length) { box.innerHTML = '<div class="empty-state" style="padding:14px">אין טיוטות ממתינות.</div>'; return; }
-    box.innerHTML = r.data.map(d => draftCard(d)).join('');
+    if (useLocal && r.data.length) box.dataset.local = '1';
+    const localNote = useLocal ? '<p class="login-hint" style="margin:0 0 10px"><i class="bi bi-hdd"></i> הטיוטות נשמרות כרגע במכשיר זה בלבד. להפעלת שמירה משותפת בענן — יש להריץ פעם אחת את מיגרציית ה-SQL.</p>' : '';
+    if (!r.data.length) { box.innerHTML = localNote + '<div class="empty-state" style="padding:14px">אין טיוטות ממתינות.</div>'; return; }
+    box.innerHTML = localNote + r.data.map(d => draftCard(d)).join('');
     box.querySelectorAll('[data-approve]').forEach(b => b.addEventListener('click', () => approve(page, b.closest('.vr-draft'), b.dataset.approve)));
     box.querySelectorAll('[data-reject]').forEach(b => b.addEventListener('click', () => setStatus(page, b.dataset.reject, 'rejected')));
     box.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => del(page, b.dataset.del)));
@@ -146,7 +178,7 @@
     if (!text) { window.UI.toast('הדיווח ריק', 'err'); return; }
     const uid = (window.currentUser && window.currentUser.id) || null;
     // עדכון הטיוטה למאושרת
-    const up = await window.db.update('voice_reports', id, {
+    const up = await vr.update(id, {
       report_text: text, student_id: studentId || null, status: 'approved',
       approved_by: uid, approved_at: new Date().toISOString()
     });
@@ -163,13 +195,13 @@
   }
 
   async function setStatus(page, id, status) {
-    const up = await window.db.update('voice_reports', id, { status });
+    const up = await vr.update(id, { status });
     window.UI.toast(up.ok ? 'הטיוטה נדחתה' : 'שגיאה', up.ok ? 'ok' : 'err');
     loadDrafts(page);
   }
   async function del(page, id) {
     if (!(await window.UI.confirm('למחוק את הטיוטה לצמיתות?'))) return;
-    const r = await window.db.remove('voice_reports', id);
+    const r = await vr.remove(id);
     window.UI.toast(r.ok ? 'נמחק' : 'שגיאה', r.ok ? 'ok' : 'err');
     loadDrafts(page);
   }
